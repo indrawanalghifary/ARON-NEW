@@ -7,7 +7,7 @@ from PySide6.QtCore import QStringListModel, Signal, QObject, QThread, QTimer, Q
 from aron_ui import Ui_MainWindow
 from datetime import datetime
 from theme_manager import ThemeManager
-from api_db import SupabaseAPI
+from api_new import get_user_info
 from PySide6.QtGui import QDesktopServices
 from qasync import QEventLoop, asyncSlot
 import time
@@ -18,39 +18,49 @@ from bagus import main
 
 
 
-class SupabaseExpirationChecker(QObject):
-    expiration_checked = Signal(bool, str) # Signal to emit (is_expired, user_email)
+class ExpirationChecker(QObject):
+    expiration_checked = Signal(bool, str, str) # Signal to emit (is_expired, user_email, error_message)
 
-    def __init__(self, supabase_api: SupabaseAPI, user_email: str, parent=None):
+    def __init__(self, user_token: str, user_email: str, parent=None):
         super().__init__(parent)
-        self.supabase_api = supabase_api
+        self.user_token = user_token
         self.user_email = user_email
 
     def check_expiration(self):
-        if not self.user_email:
-            self.expiration_checked.emit(True, "") # No user logged in, consider it expired or invalid
+        if not self.user_token:
+            self.expiration_checked.emit(True, "", "") # No token available, consider it expired
             return
 
         try:
-            user_data = self.supabase_api.read_data("user_data", {"email": self.user_email})
-            if user_data and user_data[0] and "expire_date" in user_data[0]:
-                expire_date_str = user_data[0]["expire_date"]
-                # Assuming expire_date_str is in ISO format, e.g., "YYYY-MM-DDTHH:MM:SS+00:00"
-                expire_date = datetime.fromisoformat(expire_date_str.replace("Z", "+00:00"))
-                current_date = datetime.now(expire_date.tzinfo) # Ensure timezone awareness
-
-                if current_date > expire_date:
-                    print(f"API for {self.user_email} has expired.")
-                    self.expiration_checked.emit(True, self.user_email)
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            print(f"[{timestamp}] Checking expiration for token: {self.user_token[:20]}...")
+            user_data = get_user_info(self.user_token)
+            print(f"[{timestamp}] Full API Response: {user_data}")
+            
+            if user_data and "status" in user_data and user_data["status"] == "success":
+                data = user_data.get("data", {})
+                is_expired = data.get("is_expired", True)
+                
+                if is_expired:
+                    print(f"[{timestamp}] API for {self.user_email} has expired.")
+                    self.expiration_checked.emit(True, self.user_email, "")
                 else:
-                    print(f"API for {self.user_email} is still active. Expires on: {expire_date}")
-                    self.expiration_checked.emit(False, self.user_email)
+                    remaining_days = data.get("remaining_days", 0)
+                    expired_at = data.get("expired_at", "Unknown")
+                    print(f"[{timestamp}] API for {self.user_email} is still active. Expires on: {expired_at} ({remaining_days} days remaining)")
+                    self.expiration_checked.emit(False, self.user_email, "")
+            elif user_data and user_data.get("status") == "error":
+                error_msg = user_data.get("message", "")
+                print(f"[{timestamp}] API Error for {self.user_email}: {error_msg}")
+                # Emit error signal with error message
+                self.expiration_checked.emit(True, self.user_email, error_msg)
             else:
-                print(f"No expiration data found for {self.user_email}.")
-                self.expiration_checked.emit(True, self.user_email) # Consider no data as expired
+                print(f"[{timestamp}] Invalid response from API for {self.user_email}. Response: {user_data}")
+                self.expiration_checked.emit(True, self.user_email, "") # Consider invalid response as expired
         except Exception as e:
-            print(f"Error checking expiration for {self.user_email}: {e}")
-            self.expiration_checked.emit(True, self.user_email) # Emit expired on error
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            print(f"[{timestamp}] Error checking expiration for {self.user_email}: {e}")
+            self.expiration_checked.emit(True, self.user_email, str(e)) # Emit expired on error with error message
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -62,26 +72,23 @@ class MainWindow(QMainWindow):
         #Browser
         self.browsers = []
 
-        # Supabase client initialization (placeholders)
-        self.supabase_url: str = "https://shhtzvevhywlixllklmm.supabase.co/"
-        self.supabase_key: str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNoaHR6dmV2aHl3bGl4bGxrbG1tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU4NDEwMjcsImV4cCI6MjA3MTQxNzAyN30.xTGInN9vGZEyEbFivNRbXXdiE1IH1WVA1Oxd8IY5t-A"
-        self.supabase_api = SupabaseAPI(self.supabase_url, self.supabase_key)
-        self.logged_in_user_email = None
-        self.user = None
+        # Token-based authentication
+        self.user_token = None
+        self.user_data = None
 
         # Setup for API expiration check
         self.expiration_thread = QThread()
-        self.expiration_checker = SupabaseExpirationChecker(self.supabase_api, "") # User email will be set after login
+        self.expiration_checker = ExpirationChecker("", "") # User token and email will be set after login
         self.expiration_checker.moveToThread(self.expiration_thread)
         self.expiration_checker.expiration_checked.connect(self.handle_expiration_check_result)
         self.expiration_thread.start()
 
         self.expiration_timer = QTimer(self)
-        self.expiration_timer.setInterval(5 * 60 * 1000) # 5 minutes in milliseconds
+        self.expiration_timer.setInterval(30 * 1000) # 30 seconds untuk testing (ubah ke 5 * 60 * 1000 untuk production)
         self.expiration_timer.timeout.connect(self.expiration_checker.check_expiration)
 
         self.ui.tombol_login.clicked.connect(self.login)
-        self.ui.input_password.returnPressed.connect(self.login) # Connect Enter key to login
+        self.ui.input_token.returnPressed.connect(self.login) # Connect Enter key to login
         self.ui.tombol_logout.clicked.connect(self.logout) # Assuming a logout button exists
 
         self.theme_manager = ThemeManager(app)
@@ -89,6 +96,7 @@ class MainWindow(QMainWindow):
 
         # Disable tabs initially, except the "Akun" tab (index 1)
         self.ui.tabWidget.setTabEnabled(0, False) # Tiktok tab
+        self.ui.tabWidget.setTabEnabled(1, False) # Shopee tab
         # self.ui.tabWidget.setTabEnabled(1, True) # Akun tab is already enabled by default
         self.ui.stackedWidget.setCurrentIndex(1) # Show page_login initially
 
@@ -117,7 +125,7 @@ class MainWindow(QMainWindow):
             save_file = os.path.join(folder_tujuan, nama_file)
             # hasil = process_pdf_resi_ultimate(self.file_path,save_file)
             # hasil = aron(self.file_path,save_file)
-            hasil = main(self.file_path, save_file, self.supabase_api)
+            hasil = main(self.file_path, save_file)
             self.ui.output_resi.clear()
             text = "\n".join(hasil)
             self.ui.output_resi.setPlainText(text)
@@ -148,69 +156,96 @@ class MainWindow(QMainWindow):
             self.ui.line_save_path.setText(self.folder_path)
             print(f"Folder yang dipilih: {self.folder_path}")
 
+    def manual_check_expiration(self):
+        """Manual trigger untuk test expiration check - panggil dari console: window.manual_check_expiration()"""
+        print("[Manual Trigger] Checking expiration manually...")
+        self.expiration_checker.check_expiration()
+
 
 
     def buka_url(self):
-        url = QUrl("https://www.silentech.com")  # Ganti dengan URL yang kamu inginkan
+        if self.user_data and "website_url" in self.user_data:
+            url = QUrl(self.user_data["website_url"])
+        else:
+            url = QUrl("https://www.silentech.com")
         QDesktopServices.openUrl(url)
 
-
-
-    def expired(self):
-        user_data = self.supabase_api.read_data("user_data", {"email": self.user.email})
-        if user_data and user_data[0] and "expire_date" in user_data[0]:
-            expire_date_str = user_data[0]["expire_date"]
-            # Assuming expire_date_str is in ISO format, e.g., "YYYY-MM-DDTHH:MM:SS+00:00"
-            expire_date = datetime.fromisoformat(expire_date_str.replace("Z", "+00:00"))
-            return expire_date
-
     def login(self):
-        email = self.ui.input_username.text()
-        password = self.ui.input_password.text()
+        user_token = self.ui.input_token.text().strip()
+        
+        if not user_token:
+            QMessageBox.warning(self, "Login Gagal", "Masukkan token yang valid.")
+            return
 
         try:
-            self.user = self.supabase_api.sign_in(email, password)
-            if self.user:
-                self.logged_in_user_email = self.user.email
-                self.expiration_checker.user_email = self.logged_in_user_email
+            # Verify token using API
+            response = get_user_info(user_token)
+            
+            if response and response.get("status") == "success":
+                self.user_token = user_token
+                self.user_data = response.get("data", {})
+                
+                # Update expiration checker with token and email
+                account_email = self.user_data.get("account_email", "Unknown")
+                self.expiration_checker.user_token = self.user_token
+                self.expiration_checker.user_email = account_email
+                
                 self.expiration_timer.start()
                 self.expiration_checker.check_expiration() # Initial check
 
-                print(f"Login successful for user: {self.user.email}")
+                print(f"Login successful for token: {user_token}")
                 self.ui.tabWidget.setTabEnabled(0, True) # Enable Tiktok tab
+                self.ui.tabWidget.setTabEnabled(1, True) # Enable Shopee tab
                 self.ui.tabWidget.setCurrentIndex(0) # Switch to Tiktok tab
 
                 # Switch to page_informasi in stackedWidget
                 self.ui.stackedWidget.setCurrentIndex(0) # 0 is page_informasi
 
-                # Update UI to show self.user info in "Akun" tab
-                self.ui.label_akun.setText(f"Nama: {self.user.email}")
-                self.ui.label_serial.setText(f"ID: {self.user.id}")
-                self.ui.label_id.setText(f"Last Sign In: {self.user.last_sign_in_at}")
-                self.ui.label_expire.setText(f"Expired at: {self.expired()}")
-
+                # Update UI to show user info in "Akun" tab
+                profile_name = self.user_data.get("profile_name", "Unknown")
+                self.ui.label_akun.setText(f"Nama: {profile_name}")
+                self.ui.label_serial.setText(f"Email: {account_email}")
+                
+                codename = self.user_data.get("codename", "Unknown")
+                package_title = self.user_data.get("package_title", "Unknown")
+                self.ui.label_id.setText(f"Codename: {codename} ({package_title})")
+                
+                expired_at = self.user_data.get("expired_at", "Unknown")
+                remaining_days = self.user_data.get("remaining_days", 0)
+                self.ui.label_expire.setText(f"Expired at: {expired_at} ({remaining_days} days remaining)")
+                
+                # Clear input fields
+                self.ui.input_token.clear()
             else:
-                print("Login failed: Invalid credentials or an error occurred.")
-                QMessageBox.warning(self, "Login Gagal", "Email atau kata sandi salah.")
+                error_msg = response.get("message", "Token tidak valid atau sudah expired.")
+                print(f"Login failed: {error_msg}")
+                QMessageBox.warning(self, "Login Gagal", error_msg)
         except Exception as e:
             print(f"An error occurred during login: {e}")
             QMessageBox.critical(self, "Error", f"Terjadi kesalahan saat login: {e}")
 
-    def handle_expiration_check_result(self, is_expired: bool, user_email: str):
+    def handle_expiration_check_result(self, is_expired: bool, user_email: str, error_message: str = ""):
         if is_expired:
-            QMessageBox.warning(self, "Sesi Berakhir", f"Sesi untuk {user_email} telah berakhir. Silakan perpanjang atau login kembali.")
-            self.logout()
-            QApplication.instance().quit()
+            # Check for specific error message
+            if error_message and "Slot sudah penuh" in error_message:
+                QMessageBox.critical(self, "Error", f"Slot sudah penuh. Aplikasi akan ditutup.")
+                self.logout()
+                QApplication.instance().quit()
+            else:
+                QMessageBox.warning(self, "Sesi Berakhir", f"Sesi untuk {user_email} telah berakhir. Silakan perpanjang atau login kembali.")
+                self.logout()
+                QApplication.instance().quit()
 
     def logout(self):
-        self.supabase_api.sign_out()
-        self.logged_in_user_email = None
+        self.user_token = None
+        self.user_data = None
         self.expiration_timer.stop()
         self.ui.tabWidget.setTabEnabled(0, False) # Disable Tiktok tab
         self.ui.stackedWidget.setCurrentIndex(1) # Show page_login
         self.ui.label_akun.setText("Nama:")
-        self.ui.label_serial.setText("ID:")
-        self.ui.label_expire.setText("Last Sign In:")
+        self.ui.label_serial.setText("Email:")
+        self.ui.label_id.setText("Codename:")
+        self.ui.label_expire.setText("Expired at:")
         QMessageBox.information(self, "Logout Berhasil", "Anda telah berhasil keluar.")
 
     def show_theme_dialog(self):

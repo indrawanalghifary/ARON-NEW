@@ -122,7 +122,12 @@ def get_hardware_id():
 
 
 def post_request(url, data):
-    response = requests.post(url, data=data)
+    headers = {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+    }
+    response = requests.post(url, data=data, headers=headers)
     return response.json()
 
 
@@ -130,8 +135,8 @@ def get_user_info(token):
     url = "https://duadev.xyz/api/token"
     # token = "VTOX-S4YS-BK08-LXQD"
     app_code = "ARON"
-    # device_id = get_hardware_id()
-    device_id = "12345"
+    device_id = get_hardware_id()
+    # device_id = "12345"
 
     data = {
         "token": token,
