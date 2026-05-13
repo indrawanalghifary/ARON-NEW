@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'toktok_design.ui'
+## Form generated from reading UI file 'aron.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.9.2
+## Created by: Qt User Interface Compiler version 6.10.1
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -107,8 +107,74 @@ class Ui_MainWindow(object):
 
         self.verticalLayout_2.addWidget(self.frame)
 
-        icon1 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.CameraWeb))
+        icon1 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.HelpAbout))
         self.tabWidget.addTab(self.tab_tiktok, icon1, "")
+        self.tab_shopee = QWidget()
+        self.tab_shopee.setObjectName(u"tab_shopee")
+        self.tab_shopee.setEnabled(True)
+        self.frame_shopee = QFrame(self.tab_shopee)
+        self.frame_shopee.setObjectName(u"frame_shopee")
+        self.frame_shopee.setGeometry(QRect(0, 0, 596, 296))
+        self.frame_shopee.setFrameShape(QFrame.Shape.StyledPanel)
+        self.frame_shopee.setFrameShadow(QFrame.Shadow.Raised)
+        self.horizontalLayout_2 = QHBoxLayout(self.frame_shopee)
+        self.horizontalLayout_2.setObjectName(u"horizontalLayout_2")
+        self.frame_shopee_2 = QFrame(self.frame_shopee)
+        self.frame_shopee_2.setObjectName(u"frame_shopee_2")
+        self.frame_shopee_2.setFrameShape(QFrame.Shape.StyledPanel)
+        self.frame_shopee_2.setFrameShadow(QFrame.Shadow.Raised)
+        self.verticalLayout_12 = QVBoxLayout(self.frame_shopee_2)
+        self.verticalLayout_12.setObjectName(u"verticalLayout_12")
+        self.gridLayout_shopee = QGridLayout()
+        self.gridLayout_shopee.setObjectName(u"gridLayout_shopee")
+        self.line_file_path_shopee = QLineEdit(self.frame_shopee_2)
+        self.line_file_path_shopee.setObjectName(u"line_file_path_shopee")
+
+        self.gridLayout_shopee.addWidget(self.line_file_path_shopee, 3, 0, 1, 1)
+
+        self.output_file_shopee = QPushButton(self.frame_shopee_2)
+        self.output_file_shopee.setObjectName(u"output_file_shopee")
+
+        self.gridLayout_shopee.addWidget(self.output_file_shopee, 4, 1, 1, 1)
+
+        self.label_shopee = QLabel(self.frame_shopee_2)
+        self.label_shopee.setObjectName(u"label_shopee")
+        self.label_shopee.setFont(font)
+
+        self.gridLayout_shopee.addWidget(self.label_shopee, 1, 0, 1, 1)
+
+        self.line_save_path_shopee = QLineEdit(self.frame_shopee_2)
+        self.line_save_path_shopee.setObjectName(u"line_save_path_shopee")
+
+        self.gridLayout_shopee.addWidget(self.line_save_path_shopee, 4, 0, 1, 1)
+
+        self.input_file_shopee = QPushButton(self.frame_shopee_2)
+        self.input_file_shopee.setObjectName(u"input_file_shopee")
+
+        self.gridLayout_shopee.addWidget(self.input_file_shopee, 3, 1, 1, 1)
+
+        self.verticalSpacer_shopee = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+
+        self.gridLayout_shopee.addItem(self.verticalSpacer_shopee, 2, 0, 1, 1)
+
+
+        self.verticalLayout_12.addLayout(self.gridLayout_shopee)
+
+        self.start_shopee = QPushButton(self.frame_shopee_2)
+        self.start_shopee.setObjectName(u"start_shopee")
+
+        self.verticalLayout_12.addWidget(self.start_shopee)
+
+        self.output_resi_shopee = QTextEdit(self.frame_shopee_2)
+        self.output_resi_shopee.setObjectName(u"output_resi_shopee")
+
+        self.verticalLayout_12.addWidget(self.output_resi_shopee)
+
+
+        self.horizontalLayout_2.addWidget(self.frame_shopee_2)
+
+        icon2 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.ContactNew))
+        self.tabWidget.addTab(self.tab_shopee, icon2, "")
         self.tab_akun = QWidget()
         self.tab_akun.setObjectName(u"tab_akun")
         self.verticalLayout_5 = QVBoxLayout(self.tab_akun)
@@ -209,8 +275,8 @@ class Ui_MainWindow(object):
         sizePolicy.setHeightForWidth(self.tombol_tema.sizePolicy().hasHeightForWidth())
         self.tombol_tema.setSizePolicy(sizePolicy)
         self.tombol_tema.setFont(font2)
-        icon2 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.WeatherClear))
-        self.tombol_tema.setIcon(icon2)
+        icon3 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.WeatherClear))
+        self.tombol_tema.setIcon(icon3)
 
         self.horizontalLayout_6.addWidget(self.tombol_tema)
 
@@ -273,30 +339,16 @@ class Ui_MainWindow(object):
 
         self.verticalLayout_10.addWidget(self.label_13)
 
-        self.input_username = QLineEdit(self.frame_12)
-        self.input_username.setObjectName(u"input_username")
+        self.input_token = QLineEdit(self.frame_12)
+        self.input_token.setObjectName(u"input_token")
 
-        self.verticalLayout_10.addWidget(self.input_username)
-
-        self.label_14 = QLabel(self.frame_12)
-        self.label_14.setObjectName(u"label_14")
-        self.label_14.setFont(font2)
-        self.label_14.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        self.verticalLayout_10.addWidget(self.label_14)
-
-        self.input_password = QLineEdit(self.frame_12)
-        self.input_password.setObjectName(u"input_password")
-        self.input_password.setInputMethodHints(Qt.InputMethodHint.ImhHiddenText|Qt.InputMethodHint.ImhNoAutoUppercase|Qt.InputMethodHint.ImhNoPredictiveText|Qt.InputMethodHint.ImhSensitiveData)
-        self.input_password.setEchoMode(QLineEdit.EchoMode.Password)
-
-        self.verticalLayout_10.addWidget(self.input_password)
+        self.verticalLayout_10.addWidget(self.input_token)
 
         self.tombol_login = QPushButton(self.frame_12)
         self.tombol_login.setObjectName(u"tombol_login")
         self.tombol_login.setFont(font2)
-        icon3 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.DocumentSend))
-        self.tombol_login.setIcon(icon3)
+        icon4 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.DocumentSend))
+        self.tombol_login.setIcon(icon4)
 
         self.verticalLayout_10.addWidget(self.tombol_login)
 
@@ -333,16 +385,16 @@ class Ui_MainWindow(object):
         sizePolicy2.setHeightForWidth(self.tombol_website.sizePolicy().hasHeightForWidth())
         self.tombol_website.setSizePolicy(sizePolicy2)
         self.tombol_website.setFont(font2)
-        icon4 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.NetworkOffline))
-        self.tombol_website.setIcon(icon4)
+        icon5 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.NetworkOffline))
+        self.tombol_website.setIcon(icon5)
 
         self.horizontalLayout_7.addWidget(self.tombol_website)
 
 
         self.verticalLayout_5.addWidget(self.frame_13)
 
-        icon5 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.AddressBookNew))
-        self.tabWidget.addTab(self.tab_akun, icon5, "")
+        icon6 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.AddressBookNew))
+        self.tabWidget.addTab(self.tab_akun, icon6, "")
 
         self.verticalLayout.addWidget(self.tabWidget)
 
@@ -350,7 +402,7 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
 
-        self.tabWidget.setCurrentIndex(0)
+        self.tabWidget.setCurrentIndex(2)
         self.stackedWidget.setCurrentIndex(0)
 
 
@@ -365,11 +417,22 @@ class Ui_MainWindow(object):
         self.line_file_path.setInputMask("")
         self.line_file_path.setPlaceholderText(QCoreApplication.translate("MainWindow", u"Pilih File PDF yang ingin di Edit", None))
         self.output_file.setText(QCoreApplication.translate("MainWindow", u"Output File", None))
-        self.label.setText(QCoreApplication.translate("MainWindow", u"Asmin Resi Automation", None))
+        self.label.setText(QCoreApplication.translate("MainWindow", u"ARON Tiktok", None))
         self.line_save_path.setPlaceholderText(QCoreApplication.translate("MainWindow", u"Simpan Hasil Editan Ke Folder", None))
         self.input_file.setText(QCoreApplication.translate("MainWindow", u"Pilih File", None))
         self.start.setText(QCoreApplication.translate("MainWindow", u"START", None))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_tiktok), QCoreApplication.translate("MainWindow", u"Edit PDF", None))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_tiktok), QCoreApplication.translate("MainWindow", u"Tiktok", None))
+#if QT_CONFIG(statustip)
+        self.line_file_path_shopee.setStatusTip("")
+#endif // QT_CONFIG(statustip)
+        self.line_file_path_shopee.setInputMask("")
+        self.line_file_path_shopee.setPlaceholderText(QCoreApplication.translate("MainWindow", u"Pilih File PDF Shopee yang ingin di Edit", None))
+        self.output_file_shopee.setText(QCoreApplication.translate("MainWindow", u"Output File", None))
+        self.label_shopee.setText(QCoreApplication.translate("MainWindow", u"ARON Shopee", None))
+        self.line_save_path_shopee.setPlaceholderText(QCoreApplication.translate("MainWindow", u"Simpan Hasil Editan Shopee Ke Folder", None))
+        self.input_file_shopee.setText(QCoreApplication.translate("MainWindow", u"Pilih File", None))
+        self.start_shopee.setText(QCoreApplication.translate("MainWindow", u"START", None))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_shopee), QCoreApplication.translate("MainWindow", u"Shopee", None))
         self.label_11.setText(QCoreApplication.translate("MainWindow", u"Informasi Akun", None))
         self.label_akun.setText(QCoreApplication.translate("MainWindow", u"Nama", None))
         self.label_serial.setText(QCoreApplication.translate("MainWindow", u"Serial", None))
@@ -378,10 +441,8 @@ class Ui_MainWindow(object):
         self.tombol_logout.setText(QCoreApplication.translate("MainWindow", u"Logout", None))
         self.tombol_tema.setText(QCoreApplication.translate("MainWindow", u"Tema", None))
         self.label_12.setText(QCoreApplication.translate("MainWindow", u"Login Akun", None))
-        self.label_13.setText(QCoreApplication.translate("MainWindow", u"Username", None))
-        self.input_username.setPlaceholderText(QCoreApplication.translate("MainWindow", u"Masukan Username", None))
-        self.label_14.setText(QCoreApplication.translate("MainWindow", u"Password", None))
-        self.input_password.setPlaceholderText(QCoreApplication.translate("MainWindow", u"Masukan Password", None))
+        self.label_13.setText(QCoreApplication.translate("MainWindow", u"Token", None))
+        self.input_token.setPlaceholderText(QCoreApplication.translate("MainWindow", u"Masukan Token", None))
         self.tombol_login.setText(QCoreApplication.translate("MainWindow", u"Login", None))
         self.label_10.setText(QCoreApplication.translate("MainWindow", u"Silent Tech", None))
         self.tombol_website.setText(QCoreApplication.translate("MainWindow", u"Website", None))
