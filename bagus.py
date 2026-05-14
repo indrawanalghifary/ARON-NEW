@@ -320,4 +320,7 @@ if __name__ == "__main__":
     input_pdf = "./hasil_gabungan.pdf"
     # input_pdf = "sicepat.pdf"
     output_pdf = "output.pdf"
-    main(input_pdf, output_pdf, api)
+    hasil = main(input_pdf, output_pdf, api)
+    print("\nHasil Resi:")
+    for res in hasil:
+        print(res)
