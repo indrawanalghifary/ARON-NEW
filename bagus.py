@@ -257,8 +257,7 @@ def save_edited(output_file, doc) :
     new_doc.save(output_file)
     new_doc.close()
 
-def main(pdf_path, out_path, api:SupabaseAPI):
-    split_map = get_db_sku(api)
+def main(pdf_path, out_path, split_map=split_map):
 
     doc = fitz.open(pdf_path)
 
@@ -320,7 +319,7 @@ if __name__ == "__main__":
     input_pdf = "./hasil_gabungan.pdf"
     # input_pdf = "sicepat.pdf"
     output_pdf = "output.pdf"
-    hasil = main(input_pdf, output_pdf, api)
+    hasil = main(input_pdf, output_pdf, split_map=split_map)
     print("\nHasil Resi:")
     for res in hasil:
         print(res)

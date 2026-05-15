@@ -2,7 +2,12 @@ import fitz  # pymupdf
 import re
 from collections import defaultdict
 import os
-
+split_map = {
+    "SQUWNT": ["SQU", "WNT"],
+    "IFISPJ": ["IFI", "SPJ"],
+    "CBO": ["KLRN", "SQU"],
+    "AGS": ["CSH", "WNT"]
+}
 def combine_items(items, values, split_map):
     result = defaultdict(int)
 
@@ -603,13 +608,23 @@ def split_pdf_remove_blank(input_pdf, output_pdf):
     src.close()
     remove_pages_with_text(output_pdf, "DAFTAR PRODUK", output_pdf)
 
-def spk_proses(input_pdf, output_pdf):
-    split_map = {
-        "SQUWNT": ["SQU", "WNT"],
-        "IFISPJ": ["IFI", "SPJ"],
-        "KLRNSQU": ["KLRN", "SQU"],
-        "CSHWNT": ["CSH", "WNT"]
-}
+def convert_config(response):
+    return {
+        item['sku']: item['items']
+        for item in response.get('config', [])
+    }
+    # return split_map
+    # if not isinstance(config_data, list):
+    #     return {}
+
+    # return {
+    #     item.get('sku'): item.get('items', [])
+    #     for item in config_data
+    #     if isinstance(item, dict) and item.get('sku')
+    # }
+
+
+def spk_proses(input_pdf, output_pdf,split_map=split_map):
 
     split_pdf_remove_blank(input_pdf, output_pdf)
     table_data = extract_table_data(output_pdf)
@@ -640,7 +655,7 @@ def spk_proses(input_pdf, output_pdf):
         print(f"\nFormatted Produk Text: {text_produk}")
         print(f"Formatted Copy Text: {text_copy}")
         copy_resi.append(text_copy)
-        result = find_text_and_add_text(page, "No.Pesanan: ", f"{text_produk}", offset_x=130, offset_y=20, fontsize=12)
+        result = find_text_and_add_text(page, "No.Pesanan: ", f"{text_produk}", offset_x=100, offset_y=-3, fontsize=9)
         if result:
             print(f"✓ Stamp Lunas berhasil ditambahkan di halaman {page_number}")
         else:
@@ -658,7 +673,17 @@ def spk_proses(input_pdf, output_pdf):
 if __name__ == '__main__':
     input_pdf = "split_asal.pdf"
     output_pdf = "output_split.pdf"
-    hasil = spk_proses(input_pdf, output_pdf)
+    hasil = spk_proses(input_pdf, output_pdf, split_map=split_map)
     print("\nCopy Resi:")
     for copy in hasil:
         print(copy)
+    print(split_map)
+
+    response = {'status': 'success', 'data': {'token': 'VTOX-S4YS-BK08-LXQD', 'is_expired': False, 'remaining_days': 6, 'app_code': 'ARON', 'expired_at': '2026-05-20', 'package_title': 'Trial', 'codename': 'AGS', 'max_devices': 1, 'used_devices': 1, 'remaining_devices': 0, 'profile_name': 'Agis Maulana', 'account_email': 'kangagis02@gmail.com', 'website_url': 'https://duadev.xyz'}, 'config': [{'sku': 'SQUWNT', 'items': ['SQU', 'WNT']}, {'sku': 'CBO', 'items': ['IFI', 'SPJ']}, {'sku': 'AGS', 'items': ['CSH', 'WNT']}]}
+    split_map = {
+        item['sku']: item['items']
+        for item in response.get('config', [])
+    }
+    print(split_map)
+    chek = convert_config(response)
+    print(chek)

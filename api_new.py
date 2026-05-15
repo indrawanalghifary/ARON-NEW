@@ -1,4 +1,5 @@
 import requests
+from split import convert_config
 
 # def get_hardware_id():
 #     # Implementasi untuk mendapatkan hardware ID
@@ -152,4 +153,6 @@ def get_user_info(token):
 if __name__ == "__main__":
     
     user = get_user_info("VTOX-S4YS-BK08-LXQD")
-    print(user)
+    print(json.dumps(user, indent=4))
+    split_map = convert_config(user)
+    print(split_map)

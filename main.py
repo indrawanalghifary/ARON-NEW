@@ -15,6 +15,7 @@ import asyncio
 # from perbaikan import process_pdf_resi_ultimate
 # from manual import aron
 from bagus import main
+from split import spk_proses, convert_config
 
 
 
@@ -76,6 +77,8 @@ class MainWindow(QMainWindow):
         self.user_token = None
         self.user_data = None
 
+        # initialize split_map
+        self.split_map = {}
         # Setup for API expiration check
         self.expiration_thread = QThread()
         self.expiration_checker = ExpirationChecker("", "") # User token and email will be set after login
@@ -113,6 +116,15 @@ class MainWindow(QMainWindow):
 
         self.ui.start.clicked.connect(self.jalankan_edit)
 
+        #shopee
+        self.file_path_shopee = None
+        self.ui.input_file_shopee.clicked.connect(self.pilih_pdf_input_shopee)
+
+        self.folder_path_shopee = None
+        self.ui.output_file_shopee.clicked.connect(self.pilih_folder_shopee)
+
+        self.ui.start_shopee.clicked.connect(self.jalankan_edit_shopee)
+
     def jalankan_edit(self):
         if not self.ui.line_save_path.text() or not self.ui.line_file_path.text():
             QMessageBox.warning(self,"Perhatian", "Pastikan file PDF dan Penyimpanan sudah dipilih")
@@ -125,7 +137,7 @@ class MainWindow(QMainWindow):
             save_file = os.path.join(folder_tujuan, nama_file)
             # hasil = process_pdf_resi_ultimate(self.file_path,save_file)
             # hasil = aron(self.file_path,save_file)
-            hasil = main(self.file_path, save_file)
+            hasil = main(self.file_path, save_file, split_map=self.split_map)
             self.ui.output_resi.clear()
             text = "\n".join(hasil)
             self.ui.output_resi.setPlainText(text)
@@ -155,6 +167,48 @@ class MainWindow(QMainWindow):
         if self.folder_path:
             self.ui.line_save_path.setText(self.folder_path)
             print(f"Folder yang dipilih: {self.folder_path}")
+####shopee
+    def jalankan_edit_shopee(self):
+        if not self.ui.line_save_path_shopee.text() or not self.ui.line_file_path_shopee.text():
+            QMessageBox.warning(self,"Perhatian", "Pastikan file PDF dan Penyimpanan sudah dipilih")
+            return
+        try :
+            nama_dasar = "Aron"
+            timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            nama_file = f"{nama_dasar}_{timestamp}.pdf"
+            folder_tujuan = self.folder_path_shopee
+            save_file = os.path.join(folder_tujuan, nama_file)
+            # hasil = process_pdf_resi_ultimate(self.file_path,save_file)
+            # hasil = aron(self.file_path,save_file)
+            hasil = spk_proses(self.file_path_shopee, save_file, split_map=self.split_map)
+            self.ui.output_resi_shopee.clear()
+            text = "\n".join(hasil)
+            self.ui.output_resi_shopee.setPlainText(text)
+            QMessageBox.information(self, "Suksess", f"Berhasil Di simpan di {save_file}")
+        except Exception as e :
+            QMessageBox.warning(self,"Error", f"Maaf Terjadi error {e}")
+
+    def pilih_pdf_input_shopee(self):
+        self.file_path_shopee, _ = QFileDialog.getOpenFileName(
+            self,
+            "Pilih File PDF",
+            "",
+            "PDF Files (*.pdf);;All Files (*)"
+        )
+        if self.file_path_shopee:
+            self.ui.line_file_path_shopee.setText(self.file_path_shopee)
+            print(f"Path file yang dipilih: {self.file_path_shopee}")
+
+    def pilih_folder_shopee(self):
+        self.folder_path_shopee = QFileDialog.getExistingDirectory(
+            self,
+            "Pilih Folder untuk Menyimpan File",
+            "",  # path awal, bisa isi default misalnya os.getcwd()
+            QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks
+        )
+        if self.folder_path_shopee:
+            self.ui.line_save_path_shopee.setText(self.folder_path_shopee)
+            print(f"Folder yang dipilih: {self.folder_path_shopee}")
 
     def manual_check_expiration(self):
         """Manual trigger untuk test expiration check - panggil dari console: window.manual_check_expiration()"""
@@ -216,6 +270,10 @@ class MainWindow(QMainWindow):
                 
                 # Clear input fields
                 self.ui.input_token.clear()
+
+                # Load split_map from config
+                self.split_map = convert_config(response)
+                print(self.split_map)
             else:
                 error_msg = response.get("message", "Token tidak valid atau sudah expired.")
                 print(f"Login failed: {error_msg}")
