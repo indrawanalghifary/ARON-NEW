@@ -1,5 +1,11 @@
 # -*- mode: python ; coding: utf-8 -*-
+import sys
 
+# Atur icon berdasarkan sistem operasi
+if sys.platform == 'darwin':
+    app_icon = None         # Tidak menggunakan icon untuk Mac
+else:
+    app_icon = 'arron.ico'  # Menggunakan icon .ico untuk Windows / Linux
 
 a = Analysis(
     ['main.py'],
@@ -35,5 +41,19 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['arron.ico'],
+    icon=app_icon, # Menggunakan variabel icon yang sudah disesuaikan
 )
+
+# Konfigurasi khusus untuk membungkus aplikasi menjadi format .app di Mac
+if sys.platform == 'darwin':
+    app = BUNDLE(
+        exe,
+        name='main.app',
+        icon=None, # Set None karena tidak ada file .icns
+        bundle_identifier='com.yourdomain.main',
+        info_plist={
+            'NSPrincipalClass': 'NSApplication',
+            'NSAppleScriptEnabled': False,
+        }
+    )
+    
