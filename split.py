@@ -510,36 +510,32 @@ def extract_resi_number(input_pdf, pattern="No. Resi:"):
     return resi_list
 
 def remove_pages_with_text(input_pdf, search_text, output_pdf):
-    """
-    Menghapus halaman yang mengandung teks tertentu dari PDF
-    
-    Args:
-        input_pdf: Path ke file PDF input
-        search_text: Teks yang dicari (misalnya: "DAFTAR PRODUK")
-        output_pdf: Path ke file PDF output
-    """
     src = fitz.open(input_pdf)
     dst = fitz.open()
-    
+
     removed_count = 0
-    total_pages = len(src)
-    
+
     for page_num, page in enumerate(src):
-        # Cari teks di halaman
         text = page.get_text()
-        
+
         if search_text.upper() in text.upper():
             print(f"Menghapus halaman {page_num + 1}: Ditemukan '{search_text}'")
             removed_count += 1
         else:
-            # find_text_and_add_text(page, "No.Pesanan: ", "HERBAL", offset_x=150, offset_y=20)
-            # Copy halaman ke dokumen baru jika tidak mengandung teks yang dicari
             dst.insert_pdf(src, from_page=page_num, to_page=page_num)
-            
-    
-    dst.save(output_pdf)
+
+    # SAVE KE TEMP FILE DULU
+    temp_file = output_pdf + ".tmp.pdf"
+
+    dst.save(temp_file)
+
     dst.close()
     src.close()
+
+    # Replace setelah semua close
+    os.replace(temp_file, output_pdf)
+
+    print(f"Removed {removed_count} halaman")
 
 # ====================================
 def split_pdf_remove_blank(input_pdf, output_pdf):
