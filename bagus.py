@@ -257,7 +257,7 @@ def save_edited(output_file, doc) :
     new_doc.save(output_file)
     new_doc.close()
 
-def main(pdf_path, out_path, split_map=split_map):
+def main(pdf_path, out_path, split_map=split_map, codename="ASE"):
 
     doc = fitz.open(pdf_path)
 
@@ -294,7 +294,7 @@ def main(pdf_path, out_path, split_map=split_map):
             resi.append(res)
 
             # --- tempelkan ke halaman ganjil ---
-            adding_stamp(page_ganjil, stamp_text + " - ASE")
+            adding_stamp(page_ganjil, stamp_text + " - " + codename)
             print(f"Processed page pair: Ganjil {i}, Genap {i+1}\n")
             print("=====================================")
         except Exception as e:

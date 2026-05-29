@@ -620,7 +620,7 @@ def convert_config(response):
     # }
 
 
-def spk_proses(input_pdf, output_pdf,split_map=split_map):
+def spk_proses(input_pdf, output_pdf,split_map=split_map, codename="ASE"):
 
     split_pdf_remove_blank(input_pdf, output_pdf)
     table_data = extract_table_data(output_pdf)
@@ -646,7 +646,7 @@ def spk_proses(input_pdf, output_pdf,split_map=split_map):
         combined_result = combine_items(sku_qty_data['sku'], sku_qty_data['qty'], split_map)
         print(f"\nCombined SKU and Quantity:")
         print(combined_result)
-        text_produk = format_produk_text(combined_result)
+        text_produk = format_produk_text(combined_result,codename)
         text_copy = format_copy_text(combined_result, prefix=resi_number if resi_number else "")
         print(f"\nFormatted Produk Text: {text_produk}")
         print(f"Formatted Copy Text: {text_copy}")
@@ -669,7 +669,7 @@ def spk_proses(input_pdf, output_pdf,split_map=split_map):
 if __name__ == '__main__':
     input_pdf = "split_asal.pdf"
     output_pdf = "output_split.pdf"
-    hasil = spk_proses(input_pdf, output_pdf, split_map=split_map)
+    hasil = spk_proses(input_pdf, output_pdf, split_map=split_map, codename="ASE")
     print("\nCopy Resi:")
     for copy in hasil:
         print(copy)

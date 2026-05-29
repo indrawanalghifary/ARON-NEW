@@ -130,14 +130,14 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self,"Perhatian", "Pastikan file PDF dan Penyimpanan sudah dipilih")
             return
         try :
-            nama_dasar = "Resi Asmin"
+            nama_dasar = "Aron-Tiktok"
             timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             nama_file = f"{nama_dasar}_{timestamp}.pdf"
             folder_tujuan = self.folder_path
             save_file = os.path.join(folder_tujuan, nama_file)
             # hasil = process_pdf_resi_ultimate(self.file_path,save_file)
             # hasil = aron(self.file_path,save_file)
-            hasil = main(self.file_path, save_file, split_map=self.split_map)
+            hasil = main(self.file_path, save_file, split_map=self.split_map, codename=self.codename)
             self.ui.output_resi.clear()
             text = "\n".join(hasil)
             self.ui.output_resi.setPlainText(text)
@@ -173,14 +173,14 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self,"Perhatian", "Pastikan file PDF dan Penyimpanan sudah dipilih")
             return
         try :
-            nama_dasar = "Aron"
+            nama_dasar = "Aron-Shopee"
             timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             nama_file = f"{nama_dasar}_{timestamp}.pdf"
             folder_tujuan = self.folder_path_shopee
             save_file = os.path.join(folder_tujuan, nama_file)
             # hasil = process_pdf_resi_ultimate(self.file_path,save_file)
             # hasil = aron(self.file_path,save_file)
-            hasil = spk_proses(self.file_path_shopee, save_file, split_map=self.split_map)
+            hasil = spk_proses(self.file_path_shopee, save_file, split_map=self.split_map, codename=self.codename)
             self.ui.output_resi_shopee.clear()
             text = "\n".join(hasil)
             self.ui.output_resi_shopee.setPlainText(text)
@@ -274,6 +274,7 @@ class MainWindow(QMainWindow):
                 # Load split_map from config
                 self.split_map = convert_config(response)
                 print(self.split_map)
+                self.codename = codename
             else:
                 error_msg = response.get("message", "Token tidak valid atau sudah expired.")
                 print(f"Login failed: {error_msg}")
