@@ -1,42 +1,40 @@
 name: Build & Release PyInstaller
 
+permissions:
+  contents: write
+
 on:
   push:
-    # keep tag-based release trigger
     tags:
       - "v*"
-    # also build on any branch push (change to specific branches if desired)
-    branches:
-      - "**"
-  # build on PRs as well for CI feedback
-  pull_request:
-    branches:
-      - "**"
 
 jobs:
   build:
     name: Build on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os:
+          - windows-latest
+          - ubuntu-latest
+          - macos-latest
 
     steps:
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v5
 
-      - name: Set up Python
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
 
-      - name: Cache pip (Linux/macOS)
+      - name: Cache pip
         if: runner.os != 'Windows'
         uses: actions/cache@v5
         with:
-          path: |
-            ~/.cache/pip
+          path: ~/.cache/pip
           key: pip-${{ runner.os }}-${{ hashFiles('**/requirements.txt') }}
           restore-keys: |
             pip-${{ runner.os }}-
@@ -44,31 +42,64 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          # install packages pinned in requirements.txt (includes pyinstaller)
           python -m pip install -r requirements.txt
 
-      - name: Build using spec file
+      - name: Build application
         run: pyinstaller main.spec
 
-      - name: Upload artifacts
+      - name: Package Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Compress-Archive -Path dist\* -DestinationPath aron-windows-${{ github.ref_name }}.zip
+
+      - name: Upload Windows Artifact
+        if: runner.os == 'Windows'
         uses: actions/upload-artifact@v5
         with:
-          name: build-${{ matrix.os }}
-          path: dist/
+          name: windows
+          path: aron-windows-${{ github.ref_name }}.zip
+
+      - name: Package Linux
+        if: runner.os == 'Linux'
+        run: |
+          tar -czf aron-linux-${{ github.ref_name }}.tar.gz dist/*
+
+      - name: Upload Linux Artifact
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v5
+        with:
+          name: linux
+          path: aron-linux-${{ github.ref_name }}.tar.gz
+
+      - name: Package macOS
+        if: runner.os == 'macOS'
+        run: |
+          cd dist
+          zip -r ../aron-macos-${{ github.ref_name }}.zip .
+
+      - name: Upload macOS Artifact
+        if: runner.os == 'macOS'
+        uses: actions/upload-artifact@v5
+        with:
+          name: macos
+          path: aron-macos-${{ github.ref_name }}.zip
 
   release:
-    # only create a GitHub Release when this workflow was triggered by a tag push
-    if: startsWith(github.ref, 'refs/tags/')
     needs: build
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Download all artifacts
+      - name: Download artifacts
         uses: actions/download-artifact@v5
         with:
           path: artifacts
 
-      - name: Create Release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
         with:
-          files: artifacts/**/*
+          generate_release_notes: true
+          files: |
+            artifacts/windows/*
+            artifacts/linux/*
+            artifacts/macos/*
