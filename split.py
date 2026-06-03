@@ -14,6 +14,11 @@ def combine_items(items, values, split_map):
     for item, value in zip(items, values):
         key = item.upper()
 
+        # Abaikan jika mengandung "BONUS"
+        if "BONUS" in key:
+            print(f"⊘ Mengabaikan item '{item}' (qty: {value}) karena mengandung 'BONUS'")
+            continue
+
         if key in split_map:
             for sub_key in split_map[key]:
                 result[sub_key] += value
