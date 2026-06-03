@@ -329,10 +329,12 @@ def extract_sku_qty_columns(table_data, page=None):
 
 def find_text_and_add_text(page, search_text, insert_text, offset_x=0, offset_y=0, 
                             reference_point="x0", fontsize=12, fontname="Times-Bold", 
-                            color=(0, 0, 0)):
+                            color=(0, 0, 0), fallback_x=10, fallback_y=20):
     """
     Mencari teks tertentu di halaman, kemudian memasukkan teks lain 
     dengan offset x dan y dari posisi teks yang ditemukan
+    
+    Jika teks tidak ditemukan (halaman kosong), stamp ditambahkan di posisi fallback
     
     Args:
         page: Halaman PDF (fitz.Page object)
@@ -344,6 +346,8 @@ def find_text_and_add_text(page, search_text, insert_text, offset_x=0, offset_y=
         fontsize: Ukuran font (default: 12)
         fontname: Nama font (default: "Times-Bold")
         color: Warna RGB (default: (0, 0, 0) = hitam)
+        fallback_x: Koordinat X fallback untuk halaman kosong (default: 10)
+        fallback_y: Koordinat Y fallback untuk halaman kosong (default: 20)
     
     Returns:
         dict: Info tentang teks yang ditemukan dan teks yang dimasukkan, atau None jika tidak ditemukan
@@ -351,8 +355,31 @@ def find_text_and_add_text(page, search_text, insert_text, offset_x=0, offset_y=
     text_instances = page.search_for(search_text)
     
     if not text_instances:
-        print(f"Teks '{search_text}' tidak ditemukan di halaman")
-        return None
+        # Jika teks tidak ditemukan (halaman kosong), tambahkan di posisi fallback
+        print(f"Teks '{search_text}' tidak ditemukan di halaman → menggunakan fallback position")
+        page.insert_text(
+            (fallback_x, fallback_y),
+            insert_text,
+            fontsize=fontsize,
+            fontname=fontname,
+            color=color
+        )
+        
+        result = {
+            'search_text': search_text,
+            'insert_text': insert_text,
+            'found_at': None,
+            'inserted_at': {
+                'x': fallback_x,
+                'y': fallback_y
+            },
+            'is_fallback': True,
+            'reference_point': reference_point,
+            'offset': {'x': offset_x, 'y': offset_y}
+        }
+        
+        print(f"✓ Stamp ditambahkan di fallback position ({fallback_x}, {fallback_y})")
+        return result
     
     inst = text_instances[0]  # Ambil instance pertama
     
@@ -397,7 +424,8 @@ def find_text_and_add_text(page, search_text, insert_text, offset_x=0, offset_y=
             'y': final_y
         },
         'reference_point': reference_point,
-        'offset': {'x': offset_x, 'y': offset_y}
+        'offset': {'x': offset_x, 'y': offset_y},
+        'is_fallback': False
     }
     
     print(f"Ditemukan '{search_text}' di ({inst.x0:.2f}, {inst.y0:.2f})")
@@ -621,49 +649,56 @@ def convert_config(response):
 
 
 def spk_proses(input_pdf, output_pdf,split_map=split_map, codename="ASE"):
+    try :
+        split_pdf_remove_blank(input_pdf, output_pdf)
+        table_data = extract_table_data(output_pdf)
+        print(f"Extracted table data:\n{table_data}\n")
+        resi = extract_resi_number(output_pdf)
+        src = fitz.open(output_pdf)
+        copy_resi = []
+        for page_num, page in enumerate(src):
+            page_number = page_num + 1
+            resi_number = None
+            # Boundary check: pastikan indeks ada dalam list resi
+            if page_number - 1 < len(resi) and resi[page_number - 1]['page'] == page_number:
+                resi_number = resi[page_number - 1]['number']
+                print(f"Halaman {page_number}: Menambahkan resi '{resi_number}'")
+            rows = get_rows_by_page(table_data, page_number)
+            print(f"Rows on page {page_number}:")
+            for row in rows:
+                print(row)
 
-    split_pdf_remove_blank(input_pdf, output_pdf)
-    table_data = extract_table_data(output_pdf)
-    print(f"Extracted table data:\n{table_data}\n")
-    resi = extract_resi_number(output_pdf)
-    src = fitz.open(output_pdf)
-    copy_resi = []
-    for page_num, page in enumerate(src):
-        page_number = page_num + 1
-        resi_number = None
-        if resi[page_number - 1]['page'] == page_number:
-            resi_number = resi[page_number - 1]['number']
-            print(f"Halaman {page_number}: Menambahkan resi '{resi_number}'")
-        rows = get_rows_by_page(table_data, page_number)
-        print(f"Rows on page {page_number}:")
-        for row in rows:
-            print(row)
-
-        # Extract SKU and Quantity columns
-        sku_qty_data = extract_sku_qty_columns(table_data, page=page_number)
-        print("\nExtracted SKU and Quantity columns:")
-        print(sku_qty_data)
-        combined_result = combine_items(sku_qty_data['sku'], sku_qty_data['qty'], split_map)
-        print(f"\nCombined SKU and Quantity:")
-        print(combined_result)
-        text_produk = format_produk_text(combined_result,codename)
-        text_copy = format_copy_text(combined_result, prefix=resi_number if resi_number else "")
-        print(f"\nFormatted Produk Text: {text_produk}")
-        print(f"Formatted Copy Text: {text_copy}")
-        copy_resi.append(text_copy)
-        result = find_text_and_add_text(page, "No.Pesanan: ", f"{text_produk}", offset_x=100, offset_y=-3, fontsize=9)
-        if result:
-            print(f"✓ Stamp Lunas berhasil ditambahkan di halaman {page_number}")
-        else:
-            print(f"✗ Pattern 'No.Pesanan: ' tidak ditemukan di halaman {page_number}")
-    
-    # Save to temp file then replace original (untuk handle encrypted PDF)
-    temp_output = output_pdf + "_temp"
-    src.save(temp_output)
-    src.close()
-    os.replace(temp_output, output_pdf)
-    print(f"\n✓ PDF berhasil disimpan: {output_pdf}")
-    return copy_resi
+            # Extract SKU and Quantity columns
+            sku_qty_data = extract_sku_qty_columns(table_data, page=page_number)
+            print("\nExtracted SKU and Quantity columns:")
+            print(sku_qty_data)
+            combined_result = combine_items(sku_qty_data['sku'], sku_qty_data['qty'], split_map)
+            print(f"\nCombined SKU and Quantity:")
+            print(combined_result)
+            text_produk = format_produk_text(combined_result,codename)
+            text_copy = format_copy_text(combined_result, prefix=resi_number if resi_number else "")
+            print(f"\nFormatted Produk Text: {text_produk}")
+            print(f"Formatted Copy Text: {text_copy}")
+            copy_resi.append(text_copy)
+            result = find_text_and_add_text(page, "No.Pesanan: ", f"{text_produk}", offset_x=100, offset_y=-3, fontsize=9)
+            if result:
+                if result.get('is_fallback'):
+                    print(f"⚠ Stamp ditambahkan di fallback position (halaman kosong) - halaman {page_number}")
+                else:
+                    print(f"✓ Stamp berhasil ditambahkan di posisi normal - halaman {page_number}")
+            else:
+                print(f"✗ Gagal menambahkan stamp di halaman {page_number}")
+        
+        # Save to temp file then replace original (untuk handle encrypted PDF)
+        temp_output = output_pdf + "_temp"
+        src.save(temp_output)
+        src.close()
+        os.replace(temp_output, output_pdf)
+        print(f"\n✓ PDF berhasil disimpan: {output_pdf}")
+        return copy_resi
+    except Exception as e:
+        print(f"Error during processing: {e}")
+        return []
 
 
 if __name__ == '__main__':

@@ -1,14 +1,14 @@
 import fitz
 
-from api_db import SupabaseAPI
+# from api_db import SupabaseAPI
 
 
-def get_db_sku(api:SupabaseAPI):
-    table_name = "aron"
-    data = api.read_data(table_name)
-    if data:
-        return data[0]["sku"]
-    return {}
+# def get_db_sku(api:SupabaseAPI):
+#     table_name = "aron"
+#     data = api.read_data(table_name)
+#     if data:
+#         return data[0]["sku"]
+#     return {}
 
 def find_get_koordinat(page, text:str, nilai:str='x0'):
     """
@@ -307,19 +307,19 @@ def main(pdf_path, out_path, split_map=split_map, codename="ASE"):
     return resi
 
 
-if __name__ == "__main__":
-    supabase_url = "https://shhtzvevhywlixllklmm.supabase.co/"
-    supabase_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNoaHR6dmV2aHl3bGl4bGxrbG1tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU4NDEwMjcsImV4cCI6MjA3MTQxNzAyN30.xTGInN9vGZEyEbFivNRbXXdiE1IH1WVA1Oxd8IY5t-A"
-    api = SupabaseAPI(supabase_url, supabase_key)
-    user = api.sign_in("indra@mail.com", "@Indraone22")
-    # input_pdf = "CONTOH PESANAN GABUNGAN.pdf"
-    # input_pdf = "PAKETAN X2.pdf"
-    # input_pdf = "CONTOH INSTANT.pdf"
-    # input_pdf = "all.pdf"
-    input_pdf = "./hasil_gabungan.pdf"
-    # input_pdf = "sicepat.pdf"
-    output_pdf = "output.pdf"
-    hasil = main(input_pdf, output_pdf, split_map=split_map)
-    print("\nHasil Resi:")
-    for res in hasil:
-        print(res)
+# if __name__ == "__main__":
+    # supabase_url = "https://shhtzvevhywlixllklmm.supabase.co/"
+    # supabase_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNoaHR6dmV2aHl3bGl4bGxrbG1tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU4NDEwMjcsImV4cCI6MjA3MTQxNzAyN30.xTGInN9vGZEyEbFivNRbXXdiE1IH1WVA1Oxd8IY5t-A"
+    # api = SupabaseAPI(supabase_url, supabase_key)
+    # user = api.sign_in("indra@mail.com", "@Indraone22")
+    # # input_pdf = "CONTOH PESANAN GABUNGAN.pdf"
+    # # input_pdf = "PAKETAN X2.pdf"
+    # # input_pdf = "CONTOH INSTANT.pdf"
+    # # input_pdf = "all.pdf"
+    # input_pdf = "./hasil_gabungan.pdf"
+    # # input_pdf = "sicepat.pdf"
+    # output_pdf = "output.pdf"
+    # hasil = main(input_pdf, output_pdf, split_map=split_map)
+    # print("\nHasil Resi:")
+    # for res in hasil:
+    #     print(res)
