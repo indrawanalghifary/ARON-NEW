@@ -76,6 +76,19 @@ def process_sku_qty(sku_list, qty_list, split_map=split_map):
     result = {}
 
     for sku, qty in zip(sku_list, qty_list):
+        # Bersihkan whitespace dan ubah ke uppercase untuk check
+        sku_clean = sku.strip().upper() if sku else ""
+        
+        # Abaikan jika SKU kosong/empty
+        if not sku_clean:
+            print(f"⊘ Mengabaikan SKU kosong dengan qty: {qty}")
+            continue
+        
+        # Abaikan jika mengandung "BONUS"
+        if "BONUS" in sku_clean:
+            print(f"⊘ Mengabaikan SKU '{sku}' (qty: {qty}) karena mengandung 'BONUS'")
+            continue
+        
         if sku in split_map:
             parts = split_map[sku]
             # SKU gabungan → qty dibagi rata atau satu-satu?

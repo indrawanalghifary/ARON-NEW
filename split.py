@@ -12,7 +12,12 @@ def combine_items(items, values, split_map):
     result = defaultdict(int)
 
     for item, value in zip(items, values):
-        key = item.upper()
+        key = item.upper().strip()
+
+        # Abaikan jika SKU kosong/empty
+        if not key:
+            print(f"⊘ Mengabaikan item kosong dengan qty: {value}")
+            continue
 
         # Abaikan jika mengandung "BONUS"
         if "BONUS" in key:
