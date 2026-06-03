@@ -2,8 +2,9 @@ import json
 import os
 import random
 import sys
-from PySide6.QtWidgets import QApplication, QMainWindow, QInputDialog, QMessageBox, QFileDialog
+from PySide6.QtWidgets import QApplication, QMainWindow, QInputDialog, QMessageBox, QFileDialog, QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QComboBox, QSpinBox
 from PySide6.QtCore import QStringListModel, Signal, QObject, QThread, QTimer, QUrl
+from PySide6.QtGui import QColor
 from aron_ui import Ui_MainWindow
 from datetime import datetime
 from theme_manager import ThemeManager
@@ -16,7 +17,163 @@ import asyncio
 # from manual import aron
 from bagus import main
 from split import spk_proses, convert_config
+from stamp_colors import get_platform_color, normalize_color, get_all_colors
 
+
+class ColorPickerDialog(QDialog):
+    """Dialog untuk memilih warna stamp dengan preset colors dan custom RGB"""
+    
+    def __init__(self, platform="default", parent=None):
+        super().__init__(parent)
+        self.platform = platform
+        self.selected_color = None
+        self.init_ui()
+    
+    def init_ui(self):
+        self.setWindowTitle("Pilih Warna Stamp 🎨")
+        self.setModal(True)
+        self.setMinimumWidth(400)
+        
+        layout = QVBoxLayout()
+        
+        # Label
+        label = QLabel(f"Pilih warna stamp untuk {self.platform.upper()}")
+        layout.addWidget(label)
+        
+        # Combo box dengan preset colors
+        preset_layout = QHBoxLayout()
+        preset_layout.addWidget(QLabel("Preset Colors:"))
+        
+        self.color_combo = QComboBox()
+        colors = get_all_colors(normalize=False)  # Get RGB 0-255
+        self.color_names = list(colors.keys())
+        self.color_names.sort()
+        self.color_combo.addItems(self.color_names)
+        
+        # Set default based on platform
+        if self.platform.lower() == "tiktok" and "black" in self.color_names:
+            self.color_combo.setCurrentText("black")
+        elif self.platform.lower() == "shopee" and "red" in self.color_names:
+            self.color_combo.setCurrentText("red")
+        
+        self.color_combo.currentTextChanged.connect(self.on_color_changed)
+        preset_layout.addWidget(self.color_combo)
+        layout.addLayout(preset_layout)
+        
+        # Preview color
+        self.preview_label = QLabel()
+        self.preview_label.setStyleSheet("border: 1px solid #ccc; min-height: 40px;")
+        layout.addWidget(QLabel("Preview:"))
+        layout.addWidget(self.preview_label)
+        
+        # Custom RGB section
+        custom_label = QLabel("Atau input RGB Custom (0-255):")
+        layout.addWidget(custom_label)
+        
+        rgb_layout = QHBoxLayout()
+        
+        # R spinbox
+        rgb_layout.addWidget(QLabel("R:"))
+        self.r_spinbox = QSpinBox()
+        self.r_spinbox.setMaximum(255)
+        self.r_spinbox.setValue(0)
+        self.r_spinbox.valueChanged.connect(self.on_rgb_changed)
+        rgb_layout.addWidget(self.r_spinbox)
+        
+        # G spinbox
+        rgb_layout.addWidget(QLabel("G:"))
+        self.g_spinbox = QSpinBox()
+        self.g_spinbox.setMaximum(255)
+        self.g_spinbox.setValue(0)
+        self.g_spinbox.valueChanged.connect(self.on_rgb_changed)
+        rgb_layout.addWidget(self.g_spinbox)
+        
+        # B spinbox
+        rgb_layout.addWidget(QLabel("B:"))
+        self.b_spinbox = QSpinBox()
+        self.b_spinbox.setMaximum(255)
+        self.b_spinbox.setValue(0)
+        self.b_spinbox.valueChanged.connect(self.on_rgb_changed)
+        rgb_layout.addWidget(self.b_spinbox)
+        
+        layout.addLayout(rgb_layout)
+        
+        # Buttons
+        button_layout = QHBoxLayout()
+        
+        ok_btn = QPushButton("OK ✓")
+        ok_btn.clicked.connect(self.accept)
+        button_layout.addWidget(ok_btn)
+        
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.clicked.connect(self.reject)
+        button_layout.addWidget(cancel_btn)
+        
+        layout.addLayout(button_layout)
+        
+        self.setLayout(layout)
+        
+        # Set initial preview
+        self.on_color_changed(self.color_combo.currentText())
+    
+    def on_color_changed(self, color_name):
+        """Update spinbox dan preview ketika color combo berubah"""
+        if not color_name:
+            return
+        
+        colors = get_all_colors(normalize=False)
+        if color_name in colors:
+            r, g, b = colors[color_name]
+            self.r_spinbox.blockSignals(True)
+            self.g_spinbox.blockSignals(True)
+            self.b_spinbox.blockSignals(True)
+            
+            self.r_spinbox.setValue(r)
+            self.g_spinbox.setValue(g)
+            self.b_spinbox.setValue(b)
+            
+            self.r_spinbox.blockSignals(False)
+            self.g_spinbox.blockSignals(False)
+            self.b_spinbox.blockSignals(False)
+            
+            self.update_preview()
+    
+    def on_rgb_changed(self):
+        """Update preview ketika RGB spinbox berubah, clear combo selection"""
+        self.color_combo.blockSignals(True)
+        self.color_combo.setCurrentIndex(-1)  # Clear selection
+        self.color_combo.blockSignals(False)
+        
+        self.update_preview()
+    
+    def update_preview(self):
+        """Update preview color"""
+        r = self.r_spinbox.value()
+        g = self.g_spinbox.value()
+        b = self.b_spinbox.value()
+        
+        # Create QColor dan set background
+        color = QColor(r, g, b)
+        rgb_str = f"rgb({r}, {g}, {b})"
+        self.preview_label.setStyleSheet(
+            f"background-color: {rgb_str}; border: 1px solid #ccc; min-height: 40px;"
+        )
+    
+    def get_color_normalized(self):
+        """Get selected color dalam format PyMuPDF (0-1.0 range)"""
+        r = self.r_spinbox.value()
+        g = self.g_spinbox.value()
+        b = self.b_spinbox.value()
+        
+        return normalize_color((r, g, b))
+    
+    def get_color_rgb(self):
+        """Get selected color dalam format RGB (0-255 range)"""
+        return (
+            self.r_spinbox.value(),
+            self.g_spinbox.value(),
+            self.b_spinbox.value()
+        )
 
 
 class ExpirationChecker(QObject):
@@ -129,21 +286,27 @@ class MainWindow(QMainWindow):
         if not self.ui.line_save_path.text() or not self.ui.line_file_path.text():
             QMessageBox.warning(self,"Perhatian", "Pastikan file PDF dan Penyimpanan sudah dipilih")
             return
-        try :
-            nama_dasar = "Aron-Tiktok"
-            timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-            nama_file = f"{nama_dasar}_{timestamp}.pdf"
-            folder_tujuan = self.folder_path
-            save_file = os.path.join(folder_tujuan, nama_file)
-            # hasil = process_pdf_resi_ultimate(self.file_path,save_file)
-            # hasil = aron(self.file_path,save_file)
-            hasil = main(self.file_path, save_file, split_map=self.split_map, codename=self.codename)
-            self.ui.output_resi.clear()
-            text = "\n".join(hasil)
-            self.ui.output_resi.setPlainText(text)
-            QMessageBox.information(self, "Suksess", f"Berhasil Di simpan di {save_file}")
-        except Exception as e :
-            QMessageBox.warning(self,"Error", f"Maaf Terjadi error {e}")
+        
+        # Show color picker dialog untuk TikTok
+        color_dialog = ColorPickerDialog(platform="tiktok", parent=self)
+        if color_dialog.exec() == QDialog.Accepted:
+            try :
+                nama_dasar = "Aron-Tiktok"
+                timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+                nama_file = f"{nama_dasar}_{timestamp}.pdf"
+                folder_tujuan = self.folder_path
+                save_file = os.path.join(folder_tujuan, nama_file)
+                
+                # Get selected color dari dialog (normalized untuk PyMuPDF)
+                stamp_color = color_dialog.get_color_normalized()
+                
+                hasil = main(self.file_path, save_file, split_map=self.split_map, codename=self.codename, stamp_color=stamp_color)
+                self.ui.output_resi.clear()
+                text = "\n".join(hasil)
+                self.ui.output_resi.setPlainText(text)
+                QMessageBox.information(self, "Suksess", f"Berhasil Di simpan di {save_file}")
+            except Exception as e :
+                QMessageBox.warning(self,"Error", f"Maaf Terjadi error {e}")
     
 
     def pilih_pdf_input(self):
@@ -172,21 +335,27 @@ class MainWindow(QMainWindow):
         if not self.ui.line_save_path_shopee.text() or not self.ui.line_file_path_shopee.text():
             QMessageBox.warning(self,"Perhatian", "Pastikan file PDF dan Penyimpanan sudah dipilih")
             return
-        try :
-            nama_dasar = "Aron-Shopee"
-            timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-            nama_file = f"{nama_dasar}_{timestamp}.pdf"
-            folder_tujuan = self.folder_path_shopee
-            save_file = os.path.join(folder_tujuan, nama_file)
-            # hasil = process_pdf_resi_ultimate(self.file_path,save_file)
-            # hasil = aron(self.file_path,save_file)
-            hasil = spk_proses(self.file_path_shopee, save_file, split_map=self.split_map, codename=self.codename)
-            self.ui.output_resi_shopee.clear()
-            text = "\n".join(hasil)
-            self.ui.output_resi_shopee.setPlainText(text)
-            QMessageBox.information(self, "Suksess", f"Berhasil Di simpan di {save_file}")
-        except Exception as e :
-            QMessageBox.warning(self,"Error", f"Maaf Terjadi error {e}")
+        
+        # Show color picker dialog untuk Shopee
+        color_dialog = ColorPickerDialog(platform="shopee", parent=self)
+        if color_dialog.exec() == QDialog.Accepted:
+            try :
+                nama_dasar = "Aron-Shopee"
+                timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+                nama_file = f"{nama_dasar}_{timestamp}.pdf"
+                folder_tujuan = self.folder_path_shopee
+                save_file = os.path.join(folder_tujuan, nama_file)
+                
+                # Get selected color dari dialog (normalized untuk PyMuPDF)
+                stamp_color = color_dialog.get_color_normalized()
+                
+                hasil = spk_proses(self.file_path_shopee, save_file, split_map=self.split_map, codename=self.codename, stamp_color=stamp_color)
+                self.ui.output_resi_shopee.clear()
+                text = "\n".join(hasil)
+                self.ui.output_resi_shopee.setPlainText(text)
+                QMessageBox.information(self, "Suksess", f"Berhasil Di simpan di {save_file}")
+            except Exception as e :
+                QMessageBox.warning(self,"Error", f"Maaf Terjadi error {e}")
 
     def pilih_pdf_input_shopee(self):
         self.file_path_shopee, _ = QFileDialog.getOpenFileName(

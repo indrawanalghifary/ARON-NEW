@@ -154,46 +154,38 @@ def rectangle_with_padding(page, text, x, y, fontsize:10, padding:5):
 #         color=(0, 0, 0)
 #     )
 
-def add_stamp(page, text, x, y, size=12):
-    # padding = 4
-
-    # # hitung lebar text
-    # text_width = fitz.get_text_length(
-    #     text,
-    #     fontname="Times-Bold",
-    #     fontsize=size
-    # )
-
-    # # estimasi tinggi text
-    # text_height = size
-
-    # # buat rectangle
-    # rect = fitz.Rect(
-    #     x - padding,
-    #     y - text_height - padding,
-    #     x + text_width + padding,
-    #     y + padding
-    # )
-
-    # # gambar kotak
-    # page.draw_rect(
-    #     rect,
-    #     color=(0, 0, 0),   # border hitam
-    #     width=1
-    # )
-
-    # tulis text
+def add_stamp(page, text, x, y, size=12, color=(0, 0, 0)):
+    """
+    Tambahkan stamp text ke halaman PDF dengan warna yang dapat dikustomisasi
+    
+    Args:
+        page: Halaman PDF (fitz.Page object)
+        text: Teks yang akan ditambahkan
+        x: Koordinat X
+        y: Koordinat Y
+        size: Ukuran font (default: 12)
+        color: Warna RGB tuple (default: (0, 0, 0) = hitam)
+               Contoh: (255, 0, 0) = merah, (0, 0, 255) = biru
+    """
     page.insert_text(
         (x, y),
         text,
         fontsize=size,
         fontname="Times-Bold",
-        color=(0, 0, 0)
+        color=color
     )
 
 
 
-def adding_stamp(page, text):
+def adding_stamp(page, text, color=(0, 0, 0)):
+    """
+    Cari lokasi yang sesuai di halaman dan tambahkan stamp dengan warna tertentu
+    
+    Args:
+        page: Halaman PDF
+        text: Teks stamp yang akan ditambahkan
+        color: Warna RGB tuple (default: (0, 0, 0) = hitam)
+    """
     jnt = page.search_for("Ship :")
     if jnt:
         print("ketemu JNT")
@@ -201,7 +193,7 @@ def adding_stamp(page, text):
         print(f"Koordinat JNT : {cod_rect}")
         x = cod_rect.x1 + 10
         y = cod_rect.y0 + 25
-        add_stamp(page,text, x, y)
+        add_stamp(page, text, x, y, color=color)
     
 
     gtl = page.search_for("TT Order ID")
@@ -211,7 +203,7 @@ def adding_stamp(page, text):
         print(f"Koordinat GTL : {cod_rect}")
         x = cod_rect.x1 - 35
         y = cod_rect.y0 - 25
-        add_stamp(page,text, x, y)
+        add_stamp(page, text, x, y, color=color)
 
     instant = page.search_for("Pickup Code:")
     if instant :
@@ -220,7 +212,7 @@ def adding_stamp(page, text):
         print(f"Koordinat Instant : {cod_rect}")
         x = cod_rect.x1 - 75
         y = cod_rect.y0 + 30
-        add_stamp(page,text, x, y)
+        add_stamp(page, text, x, y, color=color)
     
 
     sicepat = page.search_for("Order ID")
@@ -231,7 +223,7 @@ def adding_stamp(page, text):
         print(f"Koordinat Sicepat : {cod_rect}")
         x = cod_rect.x1 - 20
         y = cod_rect.y0 - 10
-        add_stamp(page,text, x, y)
+        add_stamp(page, text, x, y, color=color)
 
     print("Mencari Stamp Selesai")
 
@@ -257,7 +249,27 @@ def save_edited(output_file, doc) :
     new_doc.save(output_file)
     new_doc.close()
 
-def main(pdf_path, out_path, split_map=split_map, codename="ASE"):
+def main(pdf_path, out_path, split_map=split_map, codename="ASE", stamp_color=(0, 0, 0)):
+    """
+    Proses PDF dengan stamp yang dapat dikustomisasi warnanya
+    
+    Args:
+        pdf_path: Path ke file PDF input
+        out_path: Path ke file PDF output
+        split_map: Mapping untuk split SKU
+        codename: Kode nama produk (default: "ASE")
+        stamp_color: Warna stamp dalam RGB tuple (default: (0, 0, 0) = hitam)
+    
+    Examples:
+        # Warna hitam (default)
+        main(pdf_path, out_path)
+        
+        # Warna merah (Shopee)
+        main(pdf_path, out_path, stamp_color=(255, 0, 0))
+        
+        # Warna biru (TikTok)
+        main(pdf_path, out_path, stamp_color=(0, 0, 255))
+    """
 
     doc = fitz.open(pdf_path)
 
@@ -294,7 +306,7 @@ def main(pdf_path, out_path, split_map=split_map, codename="ASE"):
             resi.append(res)
 
             # --- tempelkan ke halaman ganjil ---
-            adding_stamp(page_ganjil, stamp_text + " - " + codename)
+            adding_stamp(page_ganjil, stamp_text + " - " + codename, color=stamp_color)
             print(f"Processed page pair: Ganjil {i}, Genap {i+1}\n")
             print("=====================================")
         except Exception as e:

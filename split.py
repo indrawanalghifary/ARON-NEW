@@ -648,7 +648,28 @@ def convert_config(response):
     # }
 
 
-def spk_proses(input_pdf, output_pdf,split_map=split_map, codename="ASE"):
+def spk_proses(input_pdf, output_pdf, split_map=split_map, codename="ASE", stamp_color=(0, 0, 0), stamp_fontsize=9):
+    """
+    Proses PDF dengan stamp teks yang bisa dikustomisasi
+    
+    Args:
+        input_pdf: Path ke file PDF input
+        output_pdf: Path ke file PDF output
+        split_map: Mapping untuk split SKU
+        codename: Kode nama produk (default: "ASE")
+        stamp_color: Warna stamp dalam RGB tuple (default: (0, 0, 0) = hitam)
+        stamp_fontsize: Ukuran font stamp (default: 9)
+    
+    Examples:
+        # Warna hitam (default)
+        spk_proses(input_pdf, output_pdf)
+        
+        # Warna merah (Shopee)
+        spk_proses(input_pdf, output_pdf, stamp_color=(255, 0, 0))
+        
+        # Warna biru (TikTok)
+        spk_proses(input_pdf, output_pdf, stamp_color=(0, 0, 255))
+    """
     try :
         split_pdf_remove_blank(input_pdf, output_pdf)
         table_data = extract_table_data(output_pdf)
@@ -680,7 +701,7 @@ def spk_proses(input_pdf, output_pdf,split_map=split_map, codename="ASE"):
             print(f"\nFormatted Produk Text: {text_produk}")
             print(f"Formatted Copy Text: {text_copy}")
             copy_resi.append(text_copy)
-            result = find_text_and_add_text(page, "No.Pesanan: ", f"{text_produk}", offset_x=100, offset_y=-3, fontsize=9)
+            result = find_text_and_add_text(page, "No.Pesanan: ", f"{text_produk}", offset_x=100, offset_y=-3, fontsize=stamp_fontsize, color=stamp_color)
             if result:
                 if result.get('is_fallback'):
                     print(f"⚠ Stamp ditambahkan di fallback position (halaman kosong) - halaman {page_number}")
