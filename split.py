@@ -548,27 +548,103 @@ def remove_pages_with_text(input_pdf, search_text, output_pdf):
 
     removed_count = 0
 
-    for page_num, page in enumerate(src):
-        text = page.get_text()
+    try:
+        for page_num, page in enumerate(src):
+            text = page.get_text()
 
-        if search_text.upper() in text.upper():
-            print(f"Menghapus halaman {page_num + 1}: Ditemukan '{search_text}'")
-            removed_count += 1
-        else:
-            dst.insert_pdf(src, from_page=page_num, to_page=page_num)
+            if search_text.upper() in text.upper():
+                print(f"Menghapus halaman {page_num + 1}: Ditemukan '{search_text}'")
+                removed_count += 1
+            else:
+                dst.insert_pdf(src, from_page=page_num, to_page=page_num)
 
-    # SAVE KE TEMP FILE DULU
-    temp_file = output_pdf + ".tmp.pdf"
+        # SAVE KE TEMP FILE DULU
+        temp_file = output_pdf + ".tmp.pdf"
 
-    dst.save(temp_file)
+        dst.save(temp_file)
 
-    dst.close()
-    src.close()
+        dst.close()
+        src.close()
 
-    # Replace setelah semua close
-    os.replace(temp_file, output_pdf)
+        # Replace setelah semua close
+        os.replace(temp_file, output_pdf)
 
-    print(f"Removed {removed_count} halaman")
+        print(f"Removed {removed_count} halaman")
+    
+    except Exception as e:
+        print(f"Error in remove_pages_with_text: {e}")
+        dst.close()
+        src.close()
+        
+        # Cleanup temp file jika ada error
+        temp_file = output_pdf + ".tmp.pdf"
+        if os.path.exists(temp_file):
+            try:
+                os.remove(temp_file)
+                print(f"  ✓ Temp file cleanup: {temp_file}")
+            except Exception as cleanup_error:
+                print(f"  ⚠ Gagal menghapus temp file: {cleanup_error}")
+        
+        raise  # Re-raise exception
+
+
+def remove_pages_by_number(input_pdf, output_pdf, page_numbers):
+    """
+    Hapus halaman berdasarkan nomor halaman tertentu
+    
+    Args:
+        input_pdf: Path ke file PDF input
+        output_pdf: Path ke file PDF output
+        page_numbers: List berisi nomor halaman yang akan dihapus (1-indexed)
+        
+    Example:
+        remove_pages_by_number("input.pdf", "output.pdf", [2, 5, 7])
+    """
+    src = fitz.open(input_pdf)
+    dst = fitz.open()
+    
+    removed_count = 0
+    total_pages = len(src)  # Save sebelum close
+    
+    try:
+        for page_num in range(total_pages):
+            # page_num adalah 0-indexed, tapi page_numbers adalah 1-indexed
+            current_page_number = page_num + 1
+            
+            if current_page_number in page_numbers:
+                print(f"  🗑️  Menghapus halaman {current_page_number}")
+                removed_count += 1
+            else:
+                dst.insert_pdf(src, from_page=page_num, to_page=page_num)
+        
+        # Save ke output
+        temp_file = output_pdf + ".tmp.pdf"
+        dst.save(temp_file)
+        
+        dst.close()
+        src.close()
+        
+        # Replace setelah semua close
+        os.replace(temp_file, output_pdf)
+        
+        print(f"✓ Berhasil menghapus {removed_count} halaman dari total {total_pages}")
+    
+    except Exception as e:
+        print(f"Error in remove_pages_by_number: {e}")
+        dst.close()
+        src.close()
+        
+        # Cleanup temp file jika ada error
+        temp_file = output_pdf + ".tmp.pdf"
+        if os.path.exists(temp_file):
+            try:
+                os.remove(temp_file)
+                print(f"  ✓ Temp file cleanup: {temp_file}")
+            except Exception as cleanup_error:
+                print(f"  ⚠ Gagal menghapus temp file: {cleanup_error}")
+        
+        raise  # Re-raise exception agar bisa ditangani di caller
+
 
 # ====================================
 def split_pdf_remove_blank(input_pdf, output_pdf):
@@ -656,6 +732,7 @@ def convert_config(response):
 def spk_proses(input_pdf, output_pdf, split_map=split_map, codename="ASE", stamp_color=(0, 0, 0), stamp_fontsize=9):
     """
     Proses PDF dengan stamp teks yang bisa dikustomisasi
+    Halaman dengan fallback position (halaman kosong) akan dihapus
     
     Args:
         input_pdf: Path ke file PDF input
@@ -682,6 +759,8 @@ def spk_proses(input_pdf, output_pdf, split_map=split_map, codename="ASE", stamp
         resi = extract_resi_number(output_pdf)
         src = fitz.open(output_pdf)
         copy_resi = []
+        pages_to_remove = []  # Track pages dengan fallback position
+        
         for page_num, page in enumerate(src):
             page_number = page_num + 1
             resi_number = None
@@ -705,11 +784,13 @@ def spk_proses(input_pdf, output_pdf, split_map=split_map, codename="ASE", stamp
             text_copy = format_copy_text(combined_result, prefix=resi_number if resi_number else "")
             print(f"\nFormatted Produk Text: {text_produk}")
             print(f"Formatted Copy Text: {text_copy}")
-            copy_resi.append(text_copy)
+            if combined_result:
+                copy_resi.append(text_copy)
             result = find_text_and_add_text(page, "No.Pesanan: ", f"{text_produk}", offset_x=100, offset_y=-3, fontsize=stamp_fontsize, color=stamp_color)
             if result:
                 if result.get('is_fallback'):
                     print(f"⚠ Stamp ditambahkan di fallback position (halaman kosong) - halaman {page_number}")
+                    pages_to_remove.append(page_number)  # Tandai halaman untuk dihapus
                 else:
                     print(f"✓ Stamp berhasil ditambahkan di posisi normal - halaman {page_number}")
             else:
@@ -719,11 +800,31 @@ def spk_proses(input_pdf, output_pdf, split_map=split_map, codename="ASE", stamp
         temp_output = output_pdf + "_temp"
         src.save(temp_output)
         src.close()
-        os.replace(temp_output, output_pdf)
+        
+        # Hapus halaman yang menggunakan fallback position
+        if pages_to_remove:
+            print(f"\n🗑️  Menghapus {len(pages_to_remove)} halaman dengan fallback position: {pages_to_remove}")
+            remove_pages_by_number(temp_output, output_pdf, pages_to_remove)
+            # Hapus file temp yang sudah tidak dipakai
+            if os.path.exists(temp_output):
+                os.remove(temp_output)
+                print(f"  ✓ File temp dihapus: {temp_output}")
+        else:
+            os.replace(temp_output, output_pdf)
+        
         print(f"\n✓ PDF berhasil disimpan: {output_pdf}")
         return copy_resi
     except Exception as e:
         print(f"Error during processing: {e}")
+        # Cleanup temp files jika ada error
+        temp_files = [output_pdf + "_temp", output_pdf + ".tmp.pdf"]
+        for temp_file in temp_files:
+            if os.path.exists(temp_file):
+                try:
+                    os.remove(temp_file)
+                    print(f"  ✓ Temp file cleanup: {temp_file}")
+                except Exception as cleanup_error:
+                    print(f"  ⚠ Gagal menghapus temp file {temp_file}: {cleanup_error}")
         return []
 
 
