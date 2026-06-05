@@ -51,7 +51,8 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          Compress-Archive -Path dist\* -DestinationPath aron-windows-${{ github.ref_name }}.zip
+          cd dist
+          Compress-Archive -Path * -DestinationPath ..\aron-windows-${{ github.ref_name }}.zip
 
       - name: Upload Windows Artifact
         if: runner.os == 'Windows'
@@ -63,7 +64,8 @@ jobs:
       - name: Package Linux
         if: runner.os == 'Linux'
         run: |
-          tar -czf aron-linux-${{ github.ref_name }}.tar.gz dist/*
+          cd dist
+          tar -czf ../aron-linux-${{ github.ref_name }}.tar.gz *
 
       - name: Upload Linux Artifact
         if: runner.os == 'Linux'
@@ -76,7 +78,7 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           cd dist
-          zip -r ../aron-macos-${{ github.ref_name }}.zip .
+          zip -r ../aron-macos-${{ github.ref_name }}.zip *
 
       - name: Upload macOS Artifact
         if: runner.os == 'macOS'
