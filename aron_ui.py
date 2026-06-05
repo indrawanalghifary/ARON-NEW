@@ -410,7 +410,7 @@ class Ui_MainWindow(object):
     # setupUi
 
     def retranslateUi(self, MainWindow):
-        MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"ARON", None))
+        MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"ARON v1.0.8", None))
 #if QT_CONFIG(statustip)
         self.line_file_path.setStatusTip("")
 #endif // QT_CONFIG(statustip)
@@ -444,7 +444,7 @@ class Ui_MainWindow(object):
         self.label_13.setText(QCoreApplication.translate("MainWindow", u"Token", None))
         self.input_token.setPlaceholderText(QCoreApplication.translate("MainWindow", u"Masukan Token", None))
         self.tombol_login.setText(QCoreApplication.translate("MainWindow", u"Login", None))
-        self.label_10.setText(QCoreApplication.translate("MainWindow", u"Silent Tech", None))
+        self.label_10.setText(QCoreApplication.translate("MainWindow", u"DUADEV", None))
         self.tombol_website.setText(QCoreApplication.translate("MainWindow", u"Website", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_akun), QCoreApplication.translate("MainWindow", u"Akun", None))
     # retranslateUi

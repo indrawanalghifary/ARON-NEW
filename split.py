@@ -23,6 +23,10 @@ def combine_items(items, values, split_map):
         if "BONUS" in key:
             print(f"⊘ Mengabaikan item '{item}' (qty: {value}) karena mengandung 'BONUS'")
             continue
+        # Abaikan jika mengandung "BROSUR"
+        if "BROSUR" in key:
+            print(f"⊘ Mengabaikan item '{item}' (qty: {value}) karena mengandung 'BROSUR'")
+            continue
 
         if key in split_map:
             for sub_key in split_map[key]:
@@ -733,6 +737,69 @@ def convert_config(response):
     #     if isinstance(item, dict) and item.get('sku')
     # }
 
+def crop_pdf_until_marker(
+    input_pdf,
+    output_pdf,
+    # marker="# Nama Produk SKU Lokasi Variasi Qty"
+    marker="SKU"
+):
+    doc = fitz.open(input_pdf)
+    output = fitz.open()
+
+    for page in doc:
+        rects = page.search_for(marker)
+
+        if rects:
+            print(f"Marker ditemukan di halaman {page.number + 1} pada posisi {rects[0]}")
+            marker_rect = rects[0]
+
+            # area yang dipertahankan:
+            # dari atas halaman sampai tepat sebelum marker
+            crop_rect = fitz.Rect(
+                page.rect.x0,
+                page.rect.y0,
+                page.rect.x1,
+                marker_rect.y0
+            )
+
+            new_page = output.new_page(
+                width=crop_rect.width,
+                height=crop_rect.height
+            )
+
+            new_page.show_pdf_page(
+                fitz.Rect(0, 0, crop_rect.width, crop_rect.height),
+                doc,
+                page.number,
+                clip=crop_rect
+            )
+        else:
+            # jika marker tidak ditemukan, salin halaman apa adanya
+            print(f"Marker tidak ditemukan di halaman {page.number + 1} → menyimpan halaman apa adanya")
+            new_page = output.new_page(
+                width=page.rect.width,
+                height=page.rect.height
+            )
+
+            new_page.show_pdf_page(
+                new_page.rect,
+                doc,
+                page.number
+            )
+
+    output.save(output_pdf)
+    output.close()
+    doc.close()
+
+def get_page_orientation(pdf_path, page_num=0):
+    doc = fitz.open(pdf_path)
+    page = doc[page_num]
+    rect = page.rect
+
+    if rect.width > rect.height:
+        return "landscape"
+    elif rect.height > rect.width:
+        return "portrait"
 
 def spk_proses(input_pdf, output_pdf, split_map=split_map, codename="ASE", stamp_color=(0, 0, 0), stamp_fontsize=9):
     """
@@ -757,8 +824,27 @@ def spk_proses(input_pdf, output_pdf, split_map=split_map, codename="ASE", stamp
         # Warna biru (TikTok)
         spk_proses(input_pdf, output_pdf, stamp_color=(0, 0, 255))
     """
+    cek_orientation = get_page_orientation(input_pdf)
+    if cek_orientation == "landscape":
+        try:
+            split_pdf_remove_blank(input_pdf, output_pdf)
+        except Exception as e:
+            print(f"⚠ Gagal memproses PDF landscape: {e}")
+    else:
+        marker = "SPX"
+        marker2 = "Retur"
+        src1 = fitz.open(input_pdf)
+        for page in src1:
+            rects = page.search_for(marker)
+            rects2 = page.search_for(marker2)   
+            if not rects or rects2:
+                print(f"Marker '{marker}' tidak ditemukan di halaman {page.number + 1} → menyimpan halaman apa adanya")
+                raise Exception(f"Periksa File Tidak cocok dengan Format Shopee yang di tentukan. {marker} tidak ditemukan")
+            else:
+                print(f"Marker '{marker}' ditemukan di halaman {page.number + 1} pada posisi {rects[0]}")
+                src1.save(output_pdf)
+        src1.close()
     try :
-        split_pdf_remove_blank(input_pdf, output_pdf)
         table_data = extract_table_data(output_pdf)
         print(f"Extracted table data:\n{table_data}\n")
         resi = extract_resi_number(output_pdf)
@@ -818,9 +904,18 @@ def spk_proses(input_pdf, output_pdf, split_map=split_map, codename="ASE", stamp
             os.replace(temp_output, output_pdf)
         
         print(f"\n✓ PDF berhasil disimpan: {output_pdf}")
+        try:
+            temp_pdf = output_pdf.replace(".pdf", "_temp.pdf")
+            crop_pdf_until_marker(output_pdf, temp_pdf)
+            # replace file lama
+            os.replace(temp_pdf, output_pdf)
+            #crop_pdf_until_marker(output_pdf, output_pdf)
+            print(f"✓ PDF berhasil dipotong hingga marker")
+        except Exception as crop_error:
+            print(f"⚠ Gagal memotong PDF: {crop_error}")
         return copy_resi
     except Exception as e:
-        print(f"Error during processing: {e}")
+        print(f"{e}")
         # Cleanup temp files jika ada error
         temp_files = [output_pdf + "_temp", output_pdf + ".tmp.pdf"]
         for temp_file in temp_files:
@@ -835,6 +930,7 @@ def spk_proses(input_pdf, output_pdf, split_map=split_map, codename="ASE", stamp
 
 if __name__ == '__main__':
     input_pdf = "split_asal.pdf"
+    # input_pdf = "Shopee Seller Centre.pdf"
     output_pdf = "output_split.pdf"
     hasil = spk_proses(input_pdf, output_pdf, split_map=split_map, codename="ASE")
     print("\nCopy Resi:")

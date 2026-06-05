@@ -1,3 +1,5 @@
+import re
+
 import fitz
 
 # from api_db import SupabaseAPI
@@ -87,6 +89,10 @@ def process_sku_qty(sku_list, qty_list, split_map=split_map):
         # Abaikan jika mengandung "BONUS"
         if "BONUS" in sku_clean:
             print(f"⊘ Mengabaikan SKU '{sku}' (qty: {qty}) karena mengandung 'BONUS'")
+            continue
+        # Abaikan jika mengandung "BROSUR"
+        if "BROSUR" in sku_clean:
+            print(f"⊘ Mengabaikan SKU '{sku}' (qty: {qty}) karena mengandung 'BROSUR'")
             continue
         
         if sku in split_map:
@@ -238,6 +244,26 @@ def adding_stamp(page, text, color=(0, 0, 0)):
         y = cod_rect.y0 - 10
         add_stamp(page, text, x, y, color=color)
 
+    instant_tik = page.search_for("Kode Pengambilan")
+    instant_tik1 = page.search_for("Nomor Order:")
+    if instant_tik and instant_tik1 :
+        print("ketemu Instant TikTok")
+        cod_rect = instant_tik[0]
+        print(f"Koordinat Instant TikTok : {cod_rect}")
+        # x = cod_rect.x1 - 20
+        # y = cod_rect.y0 - 10
+        x=93.12 
+        y=142.25
+        add_stamp(page, text, x, y, color=color)
+
+    elif not (jnt or gtl or instant or sicepat or instant_tik) :
+        print("Tidak menemukan ekspedisi yang dikenali, menempelkan stamp di koordinat default")
+        x=93.12 
+        y=142.25
+        add_stamp(page, text, x, y, color=color)
+    
+
+
     print("Mencari Stamp Selesai")
 
 def tracking_number(page):
@@ -262,6 +288,54 @@ def save_edited(output_file, doc) :
     new_doc.save(output_file)
     new_doc.close()
 
+def get_page_orientation(pdf_path, page_num=0):
+    doc = fitz.open(pdf_path)
+    page = doc[page_num]
+    rect = page.rect
+
+    if rect.width > rect.height:
+        return "landscape"
+    elif rect.height > rect.width:
+        return "portrait"
+    
+
+def validate_pdf_no_spx(pdf_path):
+    """
+    Raise ValueError jika ditemukan kata 'SPX'
+    pada salah satu halaman PDF.
+    """
+    doc = fitz.open(pdf_path)
+
+    try:
+        for page_num, page in enumerate(doc, start=1):
+            text = page.get_text("text")
+
+            if "SPX" in text:
+                raise ValueError(
+                    f"PDF tidak valid: pastikan pdf yang dipilih Tiktok, 'SPX' pada halaman {page_num}"
+                )
+    finally:
+        doc.close()
+
+def is_invalid_tracking(text):
+    text = text.strip()
+
+    return len(text) < 10 or text.endswith("-")
+
+import fitz
+
+def extract_text_from_rect(page):
+    rect = fitz.Rect(
+        199.33,  # x1
+        2.0,     # y1
+        280.67,  # x2
+        24.0     # y2
+    )
+
+    text = page.get_text("text", clip=rect)
+
+    return text.strip()
+
 def main(pdf_path, out_path, split_map=split_map, codename="ASE", stamp_color=(0, 0, 0)):
     """
     Proses PDF dengan stamp yang dapat dikustomisasi warnanya
@@ -283,7 +357,11 @@ def main(pdf_path, out_path, split_map=split_map, codename="ASE", stamp_color=(0
         # Warna biru (TikTok)
         main(pdf_path, out_path, stamp_color=(0, 0, 255))
     """
-
+    cek_orientation = get_page_orientation(pdf_path)
+    if cek_orientation == "landscape":
+        raise Exception("Format File PDF Tiktok tidak didukung, Pastikan Menggunaan Format PDF yang sudah di tentukan, baca dokumentasi untuk info lebih lanjut")
+    
+    validate_pdf_no_spx(pdf_path)
     doc = fitz.open(pdf_path)
 
     resi = []
@@ -299,6 +377,11 @@ def main(pdf_path, out_path, split_map=split_map, codename="ASE", stamp_color=(0
             raw_sku = extract_sku_from_page(page_genap)
             raw_qty = extract_qty_from_page(page_genap)
             tracking = tracking_number(page_genap)
+            if is_invalid_tracking(tracking):
+                print(f"⚠ Tracking number '{tracking}' tidak valid, di halaman ini.")
+                extract_text = extract_text_from_rect(page_genap)
+                print(f"Extracted text for debugging: '{extract_text}'")
+                tracking = re.sub(r'[\r\n]+', '', extract_text).strip()
             
 
             # sku_list = raw_sku.split()

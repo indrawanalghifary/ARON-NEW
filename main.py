@@ -390,7 +390,7 @@ class MainWindow(QMainWindow):
         if self.user_data and "website_url" in self.user_data:
             url = QUrl(self.user_data["website_url"])
         else:
-            url = QUrl("https://www.silentech.com")
+            url = QUrl("https://duadev.xyz")
         QDesktopServices.openUrl(url)
 
     def login(self):
