@@ -2,6 +2,7 @@ import fitz  # pymupdf
 import re
 from collections import defaultdict
 import os
+import json
 split_map = {
     "SQUWNT": ["SQU", "WNT"],
     "IFISPJ": ["IFI", "SPJ"],
@@ -9,41 +10,46 @@ split_map = {
     "AGS": ["CSH", "WNT"]
 }
 def combine_items(items, values, split_map):
-    result = defaultdict(int)
+    try :
+        result = defaultdict(int)
 
-    for item, value in zip(items, values):
-        key = item.upper().strip()
+        for item, value in zip(items, values):
+            key = item.upper().strip()
 
-        # Abaikan jika SKU kosong/empty
-        if not key:
-            print(f"⊘ Mengabaikan item kosong dengan qty: {value}")
-            continue
+            # Abaikan jika SKU kosong/empty
+            if not key:
+                print(f"⊘ Mengabaikan item kosong dengan qty: {value}")
+                continue
 
-        # Abaikan jika mengandung "BONUS"
-        if "BONUS" in key:
-            print(f"⊘ Mengabaikan item '{item}' (qty: {value}) karena mengandung 'BONUS'")
-            continue
-        # Abaikan jika mengandung "BROSUR"
-        if "BROSUR" in key:
-            print(f"⊘ Mengabaikan item '{item}' (qty: {value}) karena mengandung 'BROSUR'")
-            continue
+            # Abaikan jika mengandung "BONUS"
+            if "BONUS" in key:
+                print(f"⊘ Mengabaikan item '{item}' (qty: {value}) karena mengandung 'BONUS'")
+                continue
+            # Abaikan jika mengandung "BROSUR"
+            if "BROSUR" in key:
+                print(f"⊘ Mengabaikan item '{item}' (qty: {value}) karena mengandung 'BROSUR'")
+                continue
 
-        if key in split_map:
-            for sub_key in split_map[key]:
-                result[sub_key] += value
-        else:
-            result[key] += value
+            if key in split_map:
+                for sub_key in split_map[key]:
+                    result[sub_key] += value
+            else:
+                result[key] += value
 
-    return dict(result)
-
+        return dict(result)
+    except :
+        []
 
 def format_produk_text(combined_result, suffix="ASE"):
-    produk_text = " ".join(
-        f"{qty} {name}"
-        for name, qty in combined_result.items()
-    )
+    try :
+        produk_text = " ".join(
+            f"{qty} {name}"
+            for name, qty in combined_result.items()
+        )
 
-    return f"{produk_text} - {suffix}"
+        return f"{produk_text} - {suffix}"
+    except :
+        return ""
 
 
 def format_copy_text(combined_result, prefix="JXXXXXXXX"):
@@ -340,37 +346,86 @@ def extract_sku_qty_columns(table_data, page=None):
     }
 
     return result
-
-def find_text_and_add_text(page, search_text, insert_text, offset_x=0, offset_y=0, 
-                            reference_point="x0", fontsize=12, fontname="Times-Bold", 
-                            color=(0, 0, 0), fallback_x=10, fallback_y=20):
+def find_text(page, search_text):
     """
-    Mencari teks tertentu di halaman, kemudian memasukkan teks lain 
-    dengan offset x dan y dari posisi teks yang ditemukan
-    
-    Jika teks tidak ditemukan (halaman kosong), stamp ditambahkan di posisi fallback
-    
+    Mencari satu atau beberapa teks pada halaman PDF.
+
+    Args:
+        page: fitz.Page object
+        search_text: String atau list/tuple string
+
+    Returns:
+        dict atau None
+
+        Jika ditemukan:
+        {
+            'search_text': kata_yang_ditemukan,
+            'instances': hasil_page_search_for,
+            'first_instance': instance_pertama
+        }
+
+        Jika tidak ditemukan:
+            None
+    """
+
+    # Jika hanya satu string, ubah menjadi list
+    search_list = search_text if isinstance(search_text, (list, tuple)) else [search_text]
+
+    for text in search_list:
+        instances = page.search_for(text)
+
+        if instances:
+            return {
+                "search_text": text,
+                "instances": instances,
+                "first_instance": instances[0]
+            }
+
+    return None
+
+def find_text_and_add_text(page, search_text, insert_text, offset_x=0, offset_y=0,
+                           reference_point="x0", fontsize=12, fontname="Times-Bold",
+                           color=(0, 0, 0), fallback_x=10, fallback_y=20):
+    """
+    Mencari satu atau beberapa teks di halaman, kemudian memasukkan teks lain
+    dengan offset x dan y dari posisi teks yang ditemukan.
+
+    Jika tidak ada satu pun teks yang ditemukan, stamp ditambahkan di posisi fallback.
+
     Args:
         page: Halaman PDF (fitz.Page object)
-        search_text: Teks yang akan dicari
+        search_text: String atau list/tuple string yang akan dicari
         insert_text: Teks yang akan dimasukkan
-        offset_x: Offset horizontal dari posisi yang ditemukan (default: 0)
-        offset_y: Offset vertikal dari posisi yang ditemukan (default: 0)
-        reference_point: Titik referensi - 'x0', 'x1', 'y0', 'y1', 'tl', 'tr', 'bl', 'br' (default: 'x0')
-        fontsize: Ukuran font (default: 12)
-        fontname: Nama font (default: "Times-Bold")
-        color: Warna RGB (default: (0, 0, 0) = hitam)
-        fallback_x: Koordinat X fallback untuk halaman kosong (default: 10)
-        fallback_y: Koordinat Y fallback untuk halaman kosong (default: 20)
-    
+        offset_x: Offset horizontal
+        offset_y: Offset vertikal
+        reference_point: 'x0', 'x1', 'y0', 'y1', 'tl', 'tr', 'bl', 'br'
+        fontsize: Ukuran font
+        fontname: Nama font
+        color: Warna RGB
+        fallback_x: Posisi X jika tidak ditemukan
+        fallback_y: Posisi Y jika tidak ditemukan
+
     Returns:
-        dict: Info tentang teks yang ditemukan dan teks yang dimasukkan, atau None jika tidak ditemukan
+        dict
     """
-    text_instances = page.search_for(search_text)
-    
+
+    # Jika search_text berupa string, ubah menjadi list
+    search_list = search_text if isinstance(search_text, (list, tuple)) else [search_text]
+
+    text_instances = None
+    found_text = None
+
+    # Cari satu per satu sampai ketemu
+    for text in search_list:
+        text_instances = page.search_for(text)
+        if text_instances:
+            found_text = text
+            break
+
+    # Jika tidak ditemukan
     if not text_instances:
-        # Jika teks tidak ditemukan (halaman kosong), tambahkan di posisi fallback
-        print(f"Teks '{search_text}' tidak ditemukan di halaman → menggunakan fallback position")
+        print(f"Tidak ditemukan salah satu dari {search_list} → menggunakan fallback position")
+
         page.insert_text(
             (fallback_x, fallback_y),
             insert_text,
@@ -378,9 +433,9 @@ def find_text_and_add_text(page, search_text, insert_text, offset_x=0, offset_y=
             fontname=fontname,
             color=color
         )
-        
+
         result = {
-            'search_text': search_text,
+            'search_text': None,
             'insert_text': insert_text,
             'found_at': None,
             'inserted_at': {
@@ -389,33 +444,37 @@ def find_text_and_add_text(page, search_text, insert_text, offset_x=0, offset_y=
             },
             'is_fallback': True,
             'reference_point': reference_point,
-            'offset': {'x': offset_x, 'y': offset_y}
+            'offset': {
+                'x': offset_x,
+                'y': offset_y
+            }
         }
-        
+
         print(f"✓ Stamp ditambahkan di fallback position ({fallback_x}, {fallback_y})")
         return result
-    
-    inst = text_instances[0]  # Ambil instance pertama
-    
+
+    # Ambil hasil pertama
+    inst = text_instances[0]
+
     # Tentukan titik referensi
     reference_map = {
         'x0': (inst.x0, inst.y0),
         'x1': (inst.x1, inst.y0),
         'y0': (inst.x0, inst.y0),
         'y1': (inst.x0, inst.y1),
-        'tl': inst.tl,  # top-left
-        'tr': inst.tr,  # top-right
-        'bl': inst.bl,  # bottom-left
-        'br': inst.br,  # bottom-right
+        'tl': inst.tl,
+        'tr': inst.tr,
+        'bl': inst.bl,
+        'br': inst.br,
     }
-    
+
     ref_point = reference_map.get(reference_point, inst.tl)
-    
+
     # Hitung posisi akhir
     final_x = ref_point[0] + offset_x
     final_y = ref_point[1] + offset_y
-    
-    # Masukkan teks
+
+    # Tambahkan teks
     page.insert_text(
         (final_x, final_y),
         insert_text,
@@ -423,9 +482,9 @@ def find_text_and_add_text(page, search_text, insert_text, offset_x=0, offset_y=
         fontname=fontname,
         color=color
     )
-    
+
     result = {
-        'search_text': search_text,
+        'search_text': found_text,
         'insert_text': insert_text,
         'found_at': {
             'x0': inst.x0,
@@ -438,13 +497,16 @@ def find_text_and_add_text(page, search_text, insert_text, offset_x=0, offset_y=
             'y': final_y
         },
         'reference_point': reference_point,
-        'offset': {'x': offset_x, 'y': offset_y},
+        'offset': {
+            'x': offset_x,
+            'y': offset_y
+        },
         'is_fallback': False
     }
-    
-    print(f"Ditemukan '{search_text}' di ({inst.x0:.2f}, {inst.y0:.2f})")
+
+    print(f"Ditemukan '{found_text}' di ({inst.x0:.2f}, {inst.y0:.2f})")
     print(f"Memasukkan '{insert_text}' di ({final_x:.2f}, {final_y:.2f})")
-    
+
     return result
 
 def insert_text_at_position(page, text, x, y, fontsize=12, fontname="Times-Bold", 
@@ -540,16 +602,28 @@ def extract_resi_number(input_pdf, pattern="No. Resi:"):
                 'number': resi_number,
                 'full_text': match.group(0)
             })
-            print(f"Halaman {page_num + 1}: Ditemukan '{pattern}' → {resi_number}")
+            print(f"Halaman {page_num + 1}: Ditemukan Resi'{pattern}' → {resi_number}")
     
     src.close()
     
     if not resi_list:
-        print(f"Tidak ditemukan pattern '{pattern}' di PDF")
+        print(f"Tidak ditemukan pattern Resi'{pattern}' di PDF")
     else:
         print(f"\nTotal ditemukan: {len(resi_list)} resi")
     
     return resi_list
+
+def one_resi_number(page, pattern="No. Resi:"):
+    resi_number = None
+    text = page.get_text()
+    
+    # Cari pattern "No. Resi: XXXXX"
+    matches = re.finditer(rf"{re.escape(pattern)}\s*([^\n\s]+)", text)
+    
+    for match in matches:
+        resi_number = match.group(1)  # Ambil text setelah pattern dan space
+            
+    return resi_number
 
 def remove_pages_with_text(input_pdf, search_text, output_pdf):
     src = fitz.open(input_pdf)
@@ -596,6 +670,84 @@ def remove_pages_with_text(input_pdf, search_text, output_pdf):
         
         raise  # Re-raise exception
 
+def remove_pages_without_text(input_pdf, search_text, output_pdf):
+    src = fitz.open(input_pdf)
+    dst = fitz.open()
+
+    removed_count = 0
+
+    try:
+        for page_num, page in enumerate(src):
+            text = page.get_text()
+
+            if search_text.upper() in text.upper():
+                # Simpan halaman yang mengandung text
+                dst.insert_pdf(src, from_page=page_num, to_page=page_num)
+            else:
+                print(f"Menghapus halaman {page_num + 1}: Tidak ditemukan '{search_text}'")
+                removed_count += 1
+
+        # SAVE KE TEMP FILE DULU
+        temp_file = output_pdf + ".tmp.pdf"
+
+        dst.save(temp_file)
+
+        dst.close()
+        src.close()
+
+        # Replace setelah semua close
+        os.replace(temp_file, output_pdf)
+
+        print(f"Removed {removed_count} halaman")
+
+    except Exception as e:
+        print(f"Error in remove_pages_without_text: {e}")
+        dst.close()
+        src.close()
+
+        # Cleanup temp file jika ada error
+        temp_file = output_pdf + ".tmp.pdf"
+        if os.path.exists(temp_file):
+            try:
+                os.remove(temp_file)
+                print(f"✓ Temp file cleanup: {temp_file}")
+            except Exception as cleanup_error:
+                print(f"⚠ Gagal menghapus temp file: {cleanup_error}")
+
+        raise
+
+
+def find_text(page, search_text):
+    """
+    Mencari satu atau beberapa teks pada halaman PDF.
+
+    Args:
+        page: fitz.Page
+        search_text: str | list[str] | tuple[str]
+
+    Returns:
+        dict | None
+    """
+
+    if isinstance(search_text, str):
+        search_list = [search_text]
+    elif isinstance(search_text, (list, tuple)):
+        search_list = [str(s).strip() for s in search_text if str(s).strip()]
+    else:
+        raise TypeError("search_text harus berupa string atau list/tuple string.")
+
+    for text in search_list:
+        instances = page.search_for(text)
+
+        if len(instances) > 0:
+            return {
+                "search_text": text,
+                "instances": instances,
+                "first_instance": instances[0],
+                "count": len(instances)
+            }
+
+    return None
 
 def remove_pages_by_number(input_pdf, output_pdf, page_numbers):
     """
@@ -737,6 +889,25 @@ def convert_config(response):
     #     if isinstance(item, dict) and item.get('sku')
     # }
 
+import fitz
+
+def get_text_from_rect(page, rect):
+    """
+    Mengambil teks yang berada di dalam area Rect.
+
+    Args:
+        page: fitz.Page
+        rect: fitz.Rect atau tuple (x0, y0, x1, y1)
+
+    Returns:
+        str
+    """
+
+    if not isinstance(rect, fitz.Rect):
+        rect = fitz.Rect(rect)
+
+    return page.get_text("text", clip=rect).strip()
+
 def crop_pdf_until_marker(
     input_pdf,
     output_pdf,
@@ -830,7 +1001,7 @@ def spk_proses(input_pdf, output_pdf, split_map=split_map, codename="ASE", stamp
             split_pdf_remove_blank(input_pdf, output_pdf)
         except Exception as e:
             print(f"⚠ Gagal memproses PDF landscape: {e}")
-    else:
+    else: 
         marker = "SPX"
         marker2 = "Retur"
         src1 = fitz.open(input_pdf)
@@ -872,20 +1043,35 @@ def spk_proses(input_pdf, output_pdf, split_map=split_map, codename="ASE", stamp
             print(f"\nCombined SKU and Quantity:")
             print(combined_result)
             text_produk = format_produk_text(combined_result,codename)
-            text_copy = format_copy_text(combined_result, prefix=resi_number if resi_number else "")
+            text_copy = format_copy_text(combined_result, prefix=resi_number if resi_number else one_resi_number(page))
             print(f"\nFormatted Produk Text: {text_produk}")
             print(f"Formatted Copy Text: {text_copy}")
             if combined_result:
                 copy_resi.append(text_copy)
-            result = find_text_and_add_text(page, "No.Pesanan: ", f"{text_produk}", offset_x=100, offset_y=-3, fontsize=stamp_fontsize, color=stamp_color)
-            if result:
-                if result.get('is_fallback'):
-                    print(f"⚠ Stamp ditambahkan di fallback position (halaman kosong) - halaman {page_number}")
-                    pages_to_remove.append(page_number)  # Tandai halaman untuk dihapus
+            cari = find_text(page, ["No. Pesanan:", "No.Pesanan"])
+            if cari :
+                print("=========ADA=======")
+                print(cari['instances'])
+                offset_x = 100
+                offset_y = -3
+                koordinate = get_text_from_rect(page,cari['first_instance'])
+                print(koordinate)
+                if koordinate == "No. Pesanan:":
+                    offset_x = 75
+                    offset_y = -60
+                    print("====Merubah offset====")
+                result = find_text_and_add_text(page, ["No.Pesanan: ","No. Pesanan:"], f"{text_produk}", offset_x=offset_x, offset_y=offset_y, fallback_x=100,fallback_y=-3, fontsize=stamp_fontsize, color=stamp_color)
+                if result:
+                    if result.get('is_fallback'):
+                        print(f"⚠ Stamp ditambahkan di fallback position (halaman kosong) - halaman {page_number}")
+                        # pages_to_remove.append(page_number)  # Tandai halaman untuk dihapus
+                    else:
+                        print(f"✓ Stamp berhasil ditambahkan di posisi normal - halaman {page_number}")
                 else:
-                    print(f"✓ Stamp berhasil ditambahkan di posisi normal - halaman {page_number}")
-            else:
-                print(f"✗ Gagal menambahkan stamp di halaman {page_number}")
+                    print(f"✗ Gagal menambahkan stamp di halaman {page_number}")
+            else :
+                pages_to_remove.append(page_number)
+            
         
         # Save to temp file then replace original (untuk handle encrypted PDF)
         temp_output = output_pdf + "_temp"
@@ -929,7 +1115,17 @@ def spk_proses(input_pdf, output_pdf, split_map=split_map, codename="ASE", stamp
 
 
 if __name__ == '__main__':
-    input_pdf = "split_asal.pdf"
+    # input_pdf = '/home/indrawan/Downloads/PERCOBAAN 3 (1).pdf'
+    # input_pdf = '/home/indrawan/Downloads/ninja.pdf'
+    # input_pdf = '/home/indrawan/Downloads/JNE.pdf'
+    # input_pdf = '/home/indrawan/Downloads/POS.pdf'
+    # input_pdf = '/home/indrawan/Downloads/ANTERAJA.pdf'
+    # input_pdf = '/home/indrawan/Downloads/id expres.pdf'
+    # input_pdf = '/home/indrawan/Downloads/sicepat (1).pdf'
+    # input_pdf = '/home/indrawan/Videos/Shopee_pdf/Shopee Seller Centre.pdf'
+    input_pdf = '/home/indrawan/Videos/Shopee_pdf/shopee.pdf'
+    # input_pdf = '/home/indrawan/Downloads/Contoh Label Shopee dari Ginee.pdf'
+    # input_pdf = "split_asal.pdf"
     # input_pdf = "Shopee Seller Centre.pdf"
     output_pdf = "output_split.pdf"
     hasil = spk_proses(input_pdf, output_pdf, split_map=split_map, codename="ASE")
@@ -946,3 +1142,5 @@ if __name__ == '__main__':
     print(split_map)
     chek = convert_config(response)
     print(chek)
+    print("Number Resi :")
+    print(json.dumps(hasil, indent=3))
